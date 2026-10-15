@@ -1,0 +1,43 @@
+[build-system]
+requires = ["briefcase"]
+build-backend = "setuptools.build_meta"
+
+[tool.briefcase]
+project_name = "RuneQuest"
+bundle = "com.example"          # Cambia por tu dominio inverso
+version = "0.1.0"
+url = "https://example.com/RuneQuest"
+license.file = "LICENSE"
+author = "Tu Nombre"
+author_email = "tu@email.com"
+
+[tool.briefcase.app.RuneQuest]
+formal_name = "Rune Quest"
+description = "Puzzle de cadenas de orbes de colores para iOS, macOS y Windows"
+icon = "src/RuneQuest/resources/icon"
+sources = ["src/RuneQuest"]
+test_sources = ["tests"]
+requires = [
+    "pygame-ce",
+    "platformdirs",
+]
+test_requires = ["pytest"]
+
+[tool.briefcase.app.RuneQuest.macOS]
+universal_build = true
+requires = []
+
+[tool.briefcase.app.RuneQuest.iOS]
+# OJO: pygame no es un objetivo oficial de Briefcase en iOS.
+# Necesitarás una rueda (wheel) de pygame-ce compilada para iOS
+# (ver README, sección "Riesgo iOS").
+requires = []
+
+[tool.briefcase.app.RuneQuest.windows]
+# pygame-ce publica ruedas para Windows (x64/ARM64): no hace falta nada más.
+requires = []
+
+[tool.pytest.ini_options]
+# Permite `pytest` directamente desde la raíz sin instalar el paquete.
+pythonpath = ["src"]
+testpaths = ["tests"]

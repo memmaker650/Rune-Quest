@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Briefcase-Version: 0.4.5
+Name: RuneQuest
+Formal-Name: Rune Quest
+App-ID: com.example.runequest
+Version: 0.1.0
+Home-page: https://example.com/RuneQuest
+Download-URL: https://example.com/RuneQuest
+Author: Tu Nombre
+Author-email: tu@email.com
+Summary: Puzzle de cadenas de orbes de colores para iOS, macOS y Windows
