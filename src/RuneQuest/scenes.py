@@ -49,13 +49,18 @@ class MenuScene(Scene):
 
     def _build_buttons(self):
         """(Re)crea los botones con los textos del idioma activo."""
-        self.buttons = [
-            ("play", Button((60, 330, 240, 54), t("menu.play"))),
-            ("scores", Button((60, 396, 240, 54), t("menu.scores"))),
-            ("assist", Button((60, 462, 240, 54), self._assist_label())),
+        entries = []
+        if self.app.db.has_saved_game():
+            entries.append(("continue", t("menu.continue")))
+        entries += [
+            ("play", t("menu.play")),
+            ("scores", t("menu.scores")),
+            ("assist", self._assist_label()),
         ]
         if not IS_IOS:  # en iOS no se "sale" de una app
-            self.buttons.append(("quit", Button((60, 528, 240, 54), t("menu.quit"))))
+            entries.append(("quit", t("menu.quit")))
+        self.buttons = [(name, Button((60, 316 + i * 62, 240, 52), label))
+                        for i, (name, label) in enumerate(entries)]
         self.lang_button = FlagButton((S.LOGICAL_W - 66, S.LOGICAL_H - 52, 54, 38),
                                       translations.current().flag)
 
@@ -72,8 +77,23 @@ class MenuScene(Scene):
             log.error("No se pudo guardar el idioma %s; solo se aplica a esta sesión", lang.code)
         self._build_buttons()
 
+    def _continue_game(self):
+        state = self.app.db.load_game()
+        try:
+            game = Game.from_state(state) if state else None
+        except (KeyError, TypeError, ValueError):
+            log.exception("La partida guardada no es válida; se descarta")
+            game = None
+        if game is None:
+            self.app.db.delete_game()
+            self._build_buttons()          # ya no hay nada que continuar
+            return
+        self.app.change_scene(GameScene(self.app, game=game))
+
     def _activate(self, name):
-        if name == "play":
+        if name == "continue":
+            self._continue_game()
+        elif name == "play":
             self.app.change_scene(GameScene(self.app))
         elif name == "scores":
             self.app.change_scene(ScoresScene(self.app))
@@ -101,7 +121,7 @@ class MenuScene(Scene):
                     return
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
-                self._activate("play")
+                self._activate(self.buttons[0][0])   # "Continuar" si existe; si no, "Jugar"
             elif event.key == pygame.K_ESCAPE and not IS_IOS:
                 self.app.quit()
 
@@ -158,9 +178,10 @@ class ScoresScene(Scene):
 
 # --------------------------------------------------------------------------- partida
 class GameScene(Scene):
-    def __init__(self, app, seed=None):
+    def __init__(self, app, seed=None, game=None):
+        """Partida nueva, o la ``game`` restaurada de la base de datos."""
         super().__init__(app)
-        self.game = Game(seed=seed)
+        self.game = game or Game(seed=seed)
         self.assist = app.db.get_setting("color_assist", "0") == "1"
         self.best = app.db.best_score()
         self.hud = pygame.font.Font(None, 28)
@@ -202,8 +223,9 @@ class GameScene(Scene):
         if pos is not None:
             cell = self._cell_at(pos)
             if cell is not None:
-                self.game.tap(*cell)
-                self._consume_events()
+                if self.game.tap(*cell):
+                    self._consume_events()
+                    self._save_progress()
 
     # --- eventos del juego -> efectos visuales ---
     def _cell_center(self, r, c):
@@ -246,8 +268,20 @@ class GameScene(Scene):
                 self.banner = [t("game.level_banner", level=d["level"]), 1.6]
             elif ev.kind == "over":
                 self._save_score()
+                self._save_progress()      # borra la partida guardada
             else:
                 log.warning("Evento de juego desconocido: %r", ev.kind)
+
+    def _save_progress(self):
+        """Guarda la partida tras cada jugada (así sobrevive aunque se cierre la app);
+        al terminar se borra para que no aparezca "Continuar"."""
+        try:
+            if self.game.over:
+                self.app.db.delete_game()
+            else:
+                self.app.db.save_game(self.game.to_state())
+        except sqlite3.Error:
+            log.error("No se pudo actualizar la partida guardada")
 
     def _save_score(self):
         if self.saved:

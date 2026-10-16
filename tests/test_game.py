@@ -101,3 +101,27 @@ def test_random_playthrough_always_has_moves_or_ends():
             g.tap(*rng.choice(cells))
             g.pop_events()
         assert g.score >= 0 and g.level >= 1
+
+
+def test_state_round_trip_restores_the_exact_board():
+    g = Game(seed=4)
+    cells = [(r, c) for r in range(g.board.rows) for c in range(g.board.cols)
+             if len(g.board.group_at(r, c)) >= S.MIN_GROUP]
+    g.tap(*cells[0])
+    state = g.to_state()
+    assert {"score", "level", "balls"} <= state.keys()
+    h = Game.from_state(state)
+    assert h.board.grid == g.board.grid
+    assert (h.score, h.level, h.taps, h.rains, h.best_chain) == \
+        (g.score, g.level, g.taps, g.rains, g.best_chain)
+    assert h.board.n_colors == level_params(g.level)["colors"]
+
+
+def test_invalid_state_is_rejected():
+    import pytest
+
+    state = Game(seed=1).to_state()
+    with pytest.raises(ValueError):
+        Game.from_state({**state, "rows": 3})
+    with pytest.raises(ValueError):
+        Game.from_state({**state, "balls": [[99, 0, 1]]})

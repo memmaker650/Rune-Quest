@@ -13,7 +13,7 @@ import random
 from dataclasses import dataclass, field
 
 from . import settings as S
-from .board import Board
+from .board import EMPTY, Board
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +52,42 @@ class Game:
         log.info("Nueva partida en el nivel %d: %s", level, p)
         self.board = Board(n_colors=p["colors"], rng=self.rng)
         self.board.fill()
+
+    # --- guardar / restaurar ---
+    def to_state(self) -> dict:
+        """Estado serializable de la partida: marcadores y cada bola con su fila, columna y color."""
+        b = self.board
+        return {
+            "score": self.score, "level": self.level, "taps": self.taps, "rains": self.rains,
+            "best_chain": self.best_chain, "rows": b.rows, "cols": b.cols,
+            "balls": [[r, c, b.grid[r][c]] for r in range(b.rows) for c in range(b.cols)
+                      if b.grid[r][c] != EMPTY],
+        }
+
+    @classmethod
+    def from_state(cls, state: dict, seed=None) -> "Game":
+        """Reconstruye una partida guardada con ``to_state``. ValueError si no es válida."""
+        g = cls(seed=seed, level=int(state["level"]))
+        if (state["rows"], state["cols"]) != (g.board.rows, g.board.cols):
+            raise ValueError(f"tablero guardado de {state['rows']}x{state['cols']}, "
+                             f"se esperaba {g.board.rows}x{g.board.cols}")
+        g.score = int(state["score"])
+        g.taps = int(state.get("taps", 0))
+        g.rains = int(state.get("rains", 0))
+        g.best_chain = int(state.get("best_chain", 0))
+        grid = [[EMPTY] * g.board.cols for _ in range(g.board.rows)]
+        for r, c, color in state["balls"]:
+            if not (0 <= r < g.board.rows and 0 <= c < g.board.cols and 0 <= color < S.MAX_COLORS):
+                raise ValueError(f"bola fuera de rango: fila {r}, columna {c}, color {color}")
+            grid[r][c] = color
+        g.board.grid = grid
+        g.board.settle()              # por si el estado guardado tuviera huecos bajo una bola
+        log.info("Partida restaurada: %d puntos, nivel %d, %d bolas",
+                 g.score, g.level, g.board.count())
+        if not g.board.has_moves():
+            log.warning("La partida restaurada no tenía jugadas: llueve")
+            g._rain()
+        return g
 
     @property
     def next_level_at(self) -> int:

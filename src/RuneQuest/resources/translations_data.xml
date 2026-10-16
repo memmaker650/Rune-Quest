@@ -8,6 +8,7 @@
 <translations default="es">
   <language code="es" name="Español" flag="es">
     <text key="menu.subtitle">Toca cadenas de orbes del mismo color</text>
+    <text key="menu.continue">Continuar</text>
     <text key="menu.play">Jugar</text>
     <text key="menu.scores">Puntuaciones</text>
     <text key="menu.assist">Ayuda de color: {state}</text>
@@ -37,6 +38,7 @@
 
   <language code="en" name="English" flag="uk">
     <text key="menu.subtitle">Tap chains of same-coloured orbs</text>
+    <text key="menu.continue">Continue</text>
     <text key="menu.play">Play</text>
     <text key="menu.scores">High scores</text>
     <text key="menu.assist">Colour assist: {state}</text>
@@ -66,6 +68,7 @@
 
   <language code="fr" name="Français" flag="fr">
     <text key="menu.subtitle">Éclatez les orbes de même couleur</text>
+    <text key="menu.continue">Continuer</text>
     <text key="menu.play">Jouer</text>
     <text key="menu.scores">Scores</text>
     <text key="menu.assist">Aide couleur : {state}</text>

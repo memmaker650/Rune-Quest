@@ -55,3 +55,43 @@ def test_finished_game_saves_score_in_db(tmp_path):
     app.run(max_frames=3)
     db = Database(tmp_path / "t.db")
     assert db.top_scores(1)[0]["score"] == 123
+
+
+def _first_group_center(game):
+    board = game.board
+    r, c = next((r, c) for r in range(board.rows) for c in range(board.cols)
+                if len(board.group_at(r, c)) >= S.MIN_GROUP)
+    return S.BOARD_X + c * S.CELL + S.CELL // 2, S.BOARD_Y + r * S.CELL + S.CELL // 2
+
+
+def test_continue_restores_saved_game(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    assert [name for name, _ in app.scene.buttons][0] == "play"   # sin partida: no hay Continuar
+    scene = GameScene(app, seed=5)
+    app.change_scene(scene)
+    _click(app, *_first_group_center(scene.game))
+    app.run(max_frames=3)
+    saved_grid = [row[:] for row in scene.game.board.grid]
+    saved_score = scene.game.score
+    assert saved_score > 0
+
+    app = App(db_path=tmp_path / "t.db")                  # se reabre la app
+    assert [name for name, _ in app.scene.buttons][0] == "continue"
+    _click(app, 100, 340)                                 # botón "Continuar"
+    app.run(max_frames=2)
+    assert isinstance(app.scene, GameScene)
+    assert app.scene.game.board.grid == saved_grid
+    assert app.scene.game.score == saved_score
+
+
+def test_game_over_removes_saved_game(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    scene = GameScene(app, seed=1)
+    app.change_scene(scene)
+    app.db.save_game(scene.game.to_state())
+    board = scene.game.board
+    board.grid = [[(r % 2) * 2 + c % 2 for c in range(board.cols)] for r in range(board.rows)]
+    scene.game._rain()
+    app.run(max_frames=2)
+    from RuneQuest.db import Database
+    assert not Database(tmp_path / "t.db").has_saved_game()

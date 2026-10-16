@@ -1,5 +1,9 @@
 """Constantes del juego. Todo en coordenadas lógicas (se escala a la ventana)."""
 
+# --- Carpetas de usuario (datos y logs) ---
+APP_NAME = "RuneQuest"
+LEGACY_APP_NAME = "Orbes"         # carpetas de versiones anteriores (se migra la BDD)
+
 # --- Tablero ---
 COLS = 8
 ROWS = 14
