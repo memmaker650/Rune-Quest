@@ -8,11 +8,14 @@ Al vaciar el tablero se pasa de nivel: más filas, más colores y filas nuevas m
 
 from __future__ import annotations
 
+import logging
 import random
 from dataclasses import dataclass, field
 
 from . import settings as S
 from .board import Board
+
+log = logging.getLogger(__name__)
 
 
 def level_params(level: int) -> dict:
@@ -50,6 +53,7 @@ class Game:
     # --- nivel ---
     def _start_level(self) -> None:
         p = level_params(self.level)
+        log.info("Empieza el nivel %d: %s", self.level, p)
         self.interval = p["interval"]
         self.taps_since_push = 0
         self.board = Board(n_colors=p["colors"], rng=self.rng)
@@ -68,6 +72,7 @@ class Game:
     def tap(self, r: int, c: int) -> bool:
         """Procesa un toque. True si reventó algo."""
         if self.over:
+            log.warning("Toque en (%d, %d) con la partida ya terminada; se ignora", r, c)
             return False
         result = self.board.clear_group(r, c)
         if result is None:
@@ -90,6 +95,8 @@ class Game:
         self.taps_since_push += 1
         if self.taps_since_push >= self.interval:
             self._push()
+        if not self.over and not self.board.has_moves():
+            log.info("Sin jugadas posibles: se suben filas hasta que haya alguna")
         while not self.over and not self.board.has_moves():
             self._push()              # sin jugadas: sube fila hasta que haya o se llene
         return True
@@ -99,12 +106,15 @@ class Game:
         moves = self.board.push_row()
         if moves is None:
             self.over = True
+            log.info("Fin de la partida: %d puntos, nivel %d, mejor cadena %d",
+                     self.score, self.level, self.best_chain)
             self.events.append(Event("over", {"score": self.score, "level": self.level}))
         else:
             self.events.append(Event("push", {"moves": moves}))
 
     def _level_up(self) -> None:
         bonus = S.LEVEL_BONUS * self.level
+        log.info("Nivel %d completado (+%d de bonus)", self.level, bonus)
         self.score += bonus
         self.level += 1
         self._start_level()

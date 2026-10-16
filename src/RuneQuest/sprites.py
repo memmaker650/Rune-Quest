@@ -1,8 +1,12 @@
 """Dibujo de orbes con formas básicas (sin imágenes externas) y caché de sprites."""
 
+import logging
+
 import pygame
 
 from . import settings as S
+
+log = logging.getLogger(__name__)
 
 _cache: dict = {}
 
@@ -35,6 +39,9 @@ def orb_sprite(color_idx: int, size: int = S.CELL, assist: bool = False):
     sprite = _cache.get(key)
     if sprite is not None:
         return sprite
+    if not 0 <= color_idx < len(S.PALETTE):
+        log.warning("Índice de color fuera de la paleta: %d (se usa %d)",
+                    color_idx, color_idx % len(S.PALETTE))
     base = S.PALETTE[color_idx % len(S.PALETTE)]
     sprite = pygame.Surface((size, size), pygame.SRCALPHA)
     c = size // 2

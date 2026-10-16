@@ -7,10 +7,13 @@ vacías se compactan hacia la izquierda.
 
 from __future__ import annotations
 
+import logging
 import random
 from dataclasses import dataclass
 
 from . import settings as S
+
+log = logging.getLogger(__name__)
 
 EMPTY = -1
 Cell = tuple[int, int]            # (fila, columna)
@@ -39,6 +42,9 @@ class Board:
         """Crea un tablero desde texto: dígito = color, '.' = vacío (útil en tests)."""
         board = cls(len(lines[0]), len(lines), n_colors, rng)
         for r, line in enumerate(lines):
+            if len(line) != board.cols:
+                log.error("Fila %d de longitud %d; se esperaban %d columnas", r, len(line), board.cols)
+                raise ValueError(f"fila {r} con longitud distinta: {line!r}")
             for c, ch in enumerate(line):
                 board.grid[r][c] = EMPTY if ch == "." else int(ch)
         return board
@@ -51,13 +57,18 @@ class Board:
 
     def fill(self, n_rows: int) -> None:
         """Rellena las ``n_rows`` filas inferiores al azar, asegurando que haya jugadas."""
+        if n_rows > self.rows - 1:
+            log.warning("fill(%d) supera el máximo; se limita a %d filas", n_rows, self.rows - 1)
         n_rows = min(n_rows, self.rows - 1)
-        for _ in range(200):
+        for attempt in range(200):
             self.grid = [[EMPTY] * self.cols for _ in range(self.rows)]
             for r in range(self.rows - n_rows, self.rows):
                 self.grid[r] = self._random_row()
             if self.has_moves():
+                log.debug("Tablero rellenado con %d filas en %d intentos", n_rows, attempt + 1)
                 return
+        log.warning("No se encontró un tablero con jugadas tras 200 intentos (%d filas, %d colores)",
+                    n_rows, self.n_colors)
 
     # --- consultas ---
     def get(self, r: int, c: int) -> int:
@@ -138,6 +149,7 @@ class Board:
     def push_row(self) -> list[Move] | None:
         """Sube todo una fila y entra ``next_row`` por abajo. None si desborda (fin de partida)."""
         if any(v != EMPTY for v in self.grid[0]):
+            log.debug("push_row: desbordamiento, la fila superior está ocupada")
             return None
         moves: list[Move] = []
         for r in range(self.rows - 1):

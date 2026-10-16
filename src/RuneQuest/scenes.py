@@ -1,7 +1,9 @@
 """Escenas: menú, partida y puntuaciones."""
 
+import logging
 import math
 import random
+import sqlite3
 import sys
 
 import pygame
@@ -11,6 +13,8 @@ from .controls import is_confirm, is_real_mouse_motion, tap_position
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .ui import Button, draw_text
+
+log = logging.getLogger(__name__)
 
 IS_IOS = sys.platform == "ios"
 BOARD_RECT = pygame.Rect(S.BOARD_X, S.BOARD_Y, S.BOARD_W, S.BOARD_H)
@@ -58,10 +62,15 @@ class MenuScene(Scene):
             self.app.change_scene(ScoresScene(self.app))
         elif name == "assist":
             on = self.app.db.get_setting("color_assist", "0") == "1"
-            self.app.db.set_setting("color_assist", "0" if on else "1")
+            try:
+                self.app.db.set_setting("color_assist", "0" if on else "1")
+            except sqlite3.Error:
+                log.error("No se pudo cambiar la ayuda de color; se mantiene como estaba")
             self.buttons[2] = ("assist", Button((60, 462, 240, 54), self._assist_label()))
         elif name == "quit":
             self.app.quit()
+        else:
+            log.warning("Botón de menú desconocido: %r", name)
 
     def handle_event(self, event):
         pos = tap_position(event, self.app.display)
@@ -219,6 +228,8 @@ class GameScene(Scene):
                                                            + (S.ROWS - r) * 6)]
             elif ev.kind == "over":
                 self._save_score()
+            else:
+                log.warning("Evento de juego desconocido: %r", ev.kind)
 
     def _save_score(self):
         if self.saved:
@@ -226,7 +237,11 @@ class GameScene(Scene):
         self.saved = True
         if self.game.score > 0:
             name = self.app.db.get_setting("player_name", "Jugador")
-            self.app.db.add_score(name, self.game.score, self.game.level)
+            try:
+                self.app.db.add_score(name, self.game.score, self.game.level)
+            except sqlite3.Error:
+                # Ya registrado en db.py: no tumbamos la partida por no poder guardar.
+                log.error("La puntuación %d no se ha guardado", self.game.score)
 
     # --- ciclo ---
     def update(self, dt):

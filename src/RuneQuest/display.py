@@ -1,10 +1,13 @@
 """Superficie lógica fija escalada a la ventana (con barras) y conversión de coordenadas."""
 
+import logging
 import sys
 
 import pygame
 
 from . import settings as S
+
+log = logging.getLogger(__name__)
 
 FINGER_EVENTS = (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION)
 
@@ -15,14 +18,29 @@ class Display:
             size = (0, 0)  # pantalla completa nativa
         else:
             size = (S.LOGICAL_W, S.LOGICAL_H)
-        self.window = pygame.display.set_mode(size, pygame.RESIZABLE)
+        try:
+            self.window = pygame.display.set_mode(size, pygame.RESIZABLE)
+        except pygame.error:
+            log.exception("No se pudo crear la ventana %s", size)
+            raise
+        log.info("Ventana creada: %s (driver %s)", self.window.get_size(),
+                 pygame.display.get_driver())
         self.surface = pygame.Surface((S.LOGICAL_W, S.LOGICAL_H))
         self.scale = 1.0
         self.offset = (0.0, 0.0)
+        self._last_size = None
         self._layout()
 
     def _layout(self):
         ww, wh = self.window.get_size()
+        if (ww, wh) != self._last_size:
+            self._last_size = (ww, wh)
+            if ww <= 0 or wh <= 0:
+                log.warning("Tamaño de ventana no válido: %dx%d; se mantiene la escala", ww, wh)
+            else:
+                log.info("Tamaño de ventana: %dx%d", ww, wh)
+        if ww <= 0 or wh <= 0:
+            return  # ventana minimizada: evita escala 0 y divisiones por cero
         self.scale = min(ww / S.LOGICAL_W, wh / S.LOGICAL_H)
         self.offset = (
             (ww - S.LOGICAL_W * self.scale) / 2,
