@@ -48,8 +48,8 @@ def test_finished_game_saves_score_in_db(tmp_path):
     scene = GameScene(app, seed=1)
     app.change_scene(scene)
     scene.game.score = 123
-    board = scene.game.board                    # tablero en damero: lleno y sin jugadas
-    board.grid = [[(r + c) % 2 for c in range(board.cols)] for r in range(board.rows)]
+    board = scene.game.board                    # baldosas 2x2 de 4 colores: lleno y sin jugadas
+    board.grid = [[(r % 2) * 2 + c % 2 for c in range(board.cols)] for r in range(board.rows)]
     scene.game._rain()                          # la lluvia no cabe y no hay jugadas: fin
     assert scene.game.over
     app.run(max_frames=3)

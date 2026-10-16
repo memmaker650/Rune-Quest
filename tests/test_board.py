@@ -4,15 +4,16 @@ from RuneQuest import settings as S
 from RuneQuest.board import EMPTY, Board
 
 
-def test_group_is_orthogonal_only():
+def test_group_includes_diagonals():
     b = Board.from_text([
         "10.",
         "01.",
         "..1",
     ])
-    # Los '1' están en diagonal: no forman grupo.
-    assert b.group_at(0, 0) == [(0, 0)]
-    assert b.group_at(1, 1) == [(1, 1)]
+    # Los '1' en diagonal forman un único grupo de 3.
+    assert b.group_at(0, 0) == [(0, 0), (1, 1), (2, 2)]
+    assert b.group_at(1, 1) == [(0, 0), (1, 1), (2, 2)]
+    assert b.group_at(0, 1) == [(0, 1), (1, 0)]  # pareja en anti-diagonal
     assert b.group_at(2, 0) == []              # celda vacía
     assert b.group_at(-1, 0) == []             # fuera del tablero
 
@@ -106,6 +107,7 @@ def test_has_moves():
     assert Board.from_text(["01", "10"]).has_moves() is False
     assert Board.from_text(["00", "12"]).has_moves() is False    # solo una pareja
     assert Board.from_text(["01", "11"]).has_moves() is True     # grupo de 3 en "L"
+    assert Board.from_text(["0.1", ".0.", "1.0"]).has_moves() is True  # diagonal de 3
     assert Board.from_text(["..", ".."]).has_moves() is False
 
 

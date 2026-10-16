@@ -17,6 +17,8 @@ from . import settings as S
 log = logging.getLogger(__name__)
 
 EMPTY = -1
+# Vecinos de una celda: ortogonales y diagonales.
+NEIGHBOURS = [(dr, dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1) if (dr, dc) != (0, 0)]
 Cell = tuple[int, int]            # (fila, columna)
 Move = tuple[Cell, Cell]          # (origen, destino); una fila < 0 está sobre el tablero
 
@@ -84,7 +86,7 @@ class Board:
         return 0
 
     def group_at(self, r: int, c: int) -> list[Cell]:
-        """Orbes conectados (ortogonalmente) del mismo color que el de (r, c)."""
+        """Orbes conectados (en horizontal, vertical o diagonal) del mismo color que (r, c)."""
         if not (0 <= r < self.rows and 0 <= c < self.cols):
             return []
         color = self.grid[r][c]
@@ -94,7 +96,8 @@ class Board:
         stack = [(r, c)]
         while stack:
             cr, cc = stack.pop()
-            for nr, nc in ((cr - 1, cc), (cr + 1, cc), (cr, cc - 1), (cr, cc + 1)):
+            for dr, dc in NEIGHBOURS:
+                nr, nc = cr + dr, cc + dc
                 if (0 <= nr < self.rows and 0 <= nc < self.cols
                         and (nr, nc) not in seen and self.grid[nr][nc] == color):
                     seen.add((nr, nc))

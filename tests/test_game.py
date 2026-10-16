@@ -26,7 +26,7 @@ def test_new_game_starts_with_a_full_board():
 
 
 def test_tap_on_a_pair_does_nothing():
-    g = game_with(["001", "120"])
+    g = game_with(["002", "121"])
     assert g.tap(0, 0) is False
     assert g.score == 0 and g.taps == 0
     assert g.pop_events() == []
