@@ -1,4 +1,4 @@
-from orbes.db import Database
+from RuneQuest.db import Database
 
 
 def test_scores_sorted_and_limited():

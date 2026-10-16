@@ -238,16 +238,12 @@ class GameScene(Scene):
                 self.floaters.append([f"+{d['points']}", mx, my, 0.9])
                 self._apply_moves(d["moves"], cleared=set(d["cells"]))
                 self.best = max(self.best, self.game.score)
-            elif ev.kind == "push":
+            elif ev.kind == "rain":
                 self._apply_moves(d["moves"])
+                if self.banner is None:  # el aviso de nivel tiene prioridad
+                    self.banner = [t("game.rain"), 1.2]
             elif ev.kind == "level":
-                self.banner = [t("game.level_banner", level=d["level"], bonus=d["bonus"]), 1.6]
-                self.offsets = {}
-                for r in range(S.ROWS):
-                    for c in range(S.COLS):
-                        if self.game.board.get(r, c) >= 0:
-                            self.offsets[(r, c)] = [0.0, -(S.BOARD_H + 30 + (S.COLS - c) * 18
-                                                           + (S.ROWS - r) * 6)]
+                self.banner = [t("game.level_banner", level=d["level"]), 1.6]
             elif ev.kind == "over":
                 self._save_score()
             else:
@@ -299,12 +295,7 @@ class GameScene(Scene):
         surf.fill(S.BG)
         pygame.draw.rect(surf, S.PANEL, BOARD_RECT)
 
-        # Aviso de peligro: la pila se acerca al techo.
-        if g.board.height() >= S.ROWS - 2 and not g.over:
-            if int(self.t * 4) % 2 == 0:
-                pygame.draw.rect(surf, S.DANGER, (0, S.BOARD_Y, S.BOARD_W, 4))
-
-        # Orbes (recortados al tablero para que las filas entren "desde fuera").
+        # Orbes (recortados al tablero para que la lluvia entre "desde fuera").
         surf.set_clip(BOARD_RECT)
         for r in range(S.ROWS):
             for c in range(S.COLS):
@@ -335,7 +326,6 @@ class GameScene(Scene):
             draw_text(surf, self.hud, text, S.WHITE, center=(round(x), round(y)))
 
         self._draw_hud(surf, hover_info)
-        self._draw_bottom(surf)
         if self.banner:
             draw_text(surf, self.big, self.banner[0], S.ACCENT,
                       center=(S.LOGICAL_W // 2, S.BOARD_Y + S.BOARD_H // 2))
@@ -356,24 +346,8 @@ class GameScene(Scene):
         # Mejor cadena
         draw_text(surf, self.small, t("game.best_chain", count=g.best_chain), S.WHITE,
                   topleft=(12, 70))
-
-    def _draw_bottom(self, surf):
-        g = self.game
-        y0 = S.BOARD_Y + S.BOARD_H
-        # Vista previa de la próxima fila
-        for c, color in enumerate(g.board.next_row):
-            sprite = orb_sprite(color, 30, self.assist)
-            cx, _ = self._cell_center(0, c)
-            surf.blit(sprite, sprite.get_rect(center=(round(cx), y0 + 30)))
-        # Marcador de toques hasta la próxima fila
-        for i in range(g.interval):
-            filled = i < g.taps_since_push
-            x = S.LOGICAL_W // 2 + (i - (g.interval - 1) / 2) * 26
-            pygame.draw.circle(surf, S.ACCENT if filled else S.BUTTON, (round(x), y0 + 72), 8)
-            pygame.draw.circle(surf, S.BUTTON_EDGE, (round(x), y0 + 72), 8, 2)
-        txt = (t("game.new_row_now") if g.pushes_in <= 0
-               else t("game.new_row_in", count=g.pushes_in))
-        draw_text(surf, self.small, txt, S.WHITE, center=(S.LOGICAL_W // 2, y0 + 98))
+        draw_text(surf, self.small, t("game.next_level", score=g.next_level_at), S.BUTTON_EDGE,
+                  topright=(S.LOGICAL_W - 12, 70))
 
     def _draw_over(self, surf):
         g = self.game

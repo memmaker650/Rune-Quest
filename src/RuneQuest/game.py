@@ -1,9 +1,9 @@
 """Reglas de la partida. Lógica pura (sin pygame).
 
-Cada toque sobre un grupo de >= 2 orbes del mismo color lo revienta y suma n*(n-1)*10 puntos.
-Cada ``interval`` toques válidos sube una fila nueva por abajo; si la pila llega arriba, se acaba.
-Si no quedan jugadas, suben filas hasta que haya alguna (o se llene la pantalla).
-Al vaciar el tablero se pasa de nivel: más filas, más colores y filas nuevas más frecuentes.
+El tablero empieza lleno. Cada toque sobre un grupo de >= MIN_GROUP orbes del mismo color lo
+revienta y suma n*(n-1)*10 puntos; los orbes de encima caen. Cuando ya no quedan grupos
+posibles, "llueven" orbes nuevos hasta llenar el tablero; si aun así no hay jugadas, se acaba.
+Se sube de nivel por puntos; cada nivel añade un color a los orbes que llueven.
 """
 
 from __future__ import annotations
@@ -19,12 +19,12 @@ log = logging.getLogger(__name__)
 
 
 def level_params(level: int) -> dict:
-    step = max(0, level - 1)
-    return {
-        "colors": min(S.MAX_COLORS, S.START_COLORS + step // 2),
-        "rows": min(S.MAX_START_ROWS, S.START_ROWS + step // 2),
-        "interval": max(S.MIN_PUSH_INTERVAL, S.START_PUSH_INTERVAL - step // 3),
-    }
+    return {"colors": min(S.MAX_COLORS, S.START_COLORS + max(0, level - 1))}
+
+
+def level_threshold(level: int) -> int:
+    """Puntos necesarios para pasar del nivel ``level`` al siguiente."""
+    return S.LEVEL_POINTS * level * (level + 1) // 2
 
 
 def clear_points(n: int) -> int:
@@ -33,7 +33,7 @@ def clear_points(n: int) -> int:
 
 @dataclass
 class Event:
-    """Aviso para la capa visual: 'clear', 'push', 'level' u 'over'."""
+    """Aviso para la capa visual: 'clear', 'rain', 'level' u 'over'."""
     kind: str
     data: dict = field(default_factory=dict)
 
@@ -45,24 +45,17 @@ class Game:
         self.level = level
         self.over = False
         self.taps = 0                 # toques válidos totales
+        self.rains = 0
         self.best_chain = 0
-        self.taps_since_push = 0
         self.events: list[Event] = []
-        self._start_level()
-
-    # --- nivel ---
-    def _start_level(self) -> None:
-        p = level_params(self.level)
-        log.info("Empieza el nivel %d: %s", self.level, p)
-        self.interval = p["interval"]
-        self.taps_since_push = 0
+        p = level_params(level)
+        log.info("Nueva partida en el nivel %d: %s", level, p)
         self.board = Board(n_colors=p["colors"], rng=self.rng)
-        self.board.fill(p["rows"])
+        self.board.fill()
 
     @property
-    def pushes_in(self) -> int:
-        """Toques válidos que faltan para que suba la próxima fila."""
-        return self.interval - self.taps_since_push
+    def next_level_at(self) -> int:
+        return level_threshold(self.level)
 
     def pop_events(self) -> list[Event]:
         events, self.events = self.events, []
@@ -88,34 +81,25 @@ class Game:
             "moves": result.moves,
         }))
 
-        if self.board.is_empty():
+        while self.score >= self.next_level_at:
             self._level_up()
-            return True
-
-        self.taps_since_push += 1
-        if self.taps_since_push >= self.interval:
-            self._push()
-        if not self.over and not self.board.has_moves():
-            log.info("Sin jugadas posibles: se suben filas hasta que haya alguna")
-        while not self.over and not self.board.has_moves():
-            self._push()              # sin jugadas: sube fila hasta que haya o se llene
+        if not self.board.has_moves():
+            self._rain()
         return True
 
-    def _push(self) -> None:
-        self.taps_since_push = 0
-        moves = self.board.push_row()
-        if moves is None:
+    def _rain(self) -> None:
+        self.rains += 1
+        log.info("Sin jugadas posibles: lluvia de orbes n.º %d", self.rains)
+        self.events.append(Event("rain", {"moves": self.board.rain()}))
+        if not self.board.has_moves():
             self.over = True
             log.info("Fin de la partida: %d puntos, nivel %d, mejor cadena %d",
                      self.score, self.level, self.best_chain)
             self.events.append(Event("over", {"score": self.score, "level": self.level}))
-        else:
-            self.events.append(Event("push", {"moves": moves}))
 
     def _level_up(self) -> None:
-        bonus = S.LEVEL_BONUS * self.level
-        log.info("Nivel %d completado (+%d de bonus)", self.level, bonus)
-        self.score += bonus
         self.level += 1
-        self._start_level()
-        self.events.append(Event("level", {"level": self.level, "bonus": bonus}))
+        p = level_params(self.level)
+        self.board.n_colors = p["colors"]
+        log.info("Subida al nivel %d con %d puntos: %s", self.level, self.score, p)
+        self.events.append(Event("level", {"level": self.level}))

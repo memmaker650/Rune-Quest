@@ -2,12 +2,12 @@
 
 # --- Tablero ---
 COLS = 8
-ROWS = 12
+ROWS = 14
 CELL = 45
 BOARD_X = 0
 BOARD_Y = 100
 BOARD_W = COLS * CELL            # 360
-BOARD_H = ROWS * CELL            # 540
+BOARD_H = ROWS * CELL            # 630
 
 # --- Pantalla lógica (relación ~ iPhone en vertical) ---
 LOGICAL_W = BOARD_W
@@ -15,17 +15,13 @@ LOGICAL_H = 760
 FPS = 60
 
 # --- Reglas ---
-MIN_GROUP = 2                    # orbes conectados mínimos para poder reventar
+MIN_GROUP = 3                    # orbes conectados mínimos para poder reventar
 POINTS_PER_PAIR = 10             # puntos = n * (n - 1) * POINTS_PER_PAIR
-LEVEL_BONUS = 500                # bonus * nivel al vaciar el tablero
+LEVEL_POINTS = 1000              # nivel n -> n+1 al llegar a LEVEL_POINTS * n*(n+1)/2 puntos
 
 # --- Dificultad (ver game.level_params) ---
-START_COLORS = 3
+START_COLORS = 3                 # colores de los orbes nuevos en el nivel 1
 MAX_COLORS = 6
-START_ROWS = 4                   # filas iniciales del nivel 1
-MAX_START_ROWS = ROWS - 4
-START_PUSH_INTERVAL = 5          # toques entre filas nuevas en el nivel 1
-MIN_PUSH_INTERVAL = 2
 
 # --- Colores ---
 BG = (18, 20, 40)
