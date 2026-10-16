@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Textos de la interfaz. Un bloque <language> por idioma; el atributo "code" es el que se
+  guarda en los ajustes y "flag" indica qué bandera se dibuja en el menú (ver flags.py).
+  Los textos admiten marcadores {nombre} que se rellenan desde el código.
+  El orden de los bloques es el orden en que se recorren al pulsar la bandera.
+-->
+<translations default="es">
+  <language code="es" name="Español" flag="es">
+    <text key="menu.subtitle">Toca cadenas de orbes del mismo color</text>
+    <text key="menu.play">Jugar</text>
+    <text key="menu.scores">Puntuaciones</text>
+    <text key="menu.assist">Ayuda de color: {state}</text>
+    <text key="menu.quit">Salir</text>
+    <text key="menu.record">Récord: {score}</text>
+    <text key="common.yes">sí</text>
+    <text key="common.no">no</text>
+    <text key="scores.title">Puntuaciones</text>
+    <text key="scores.empty">Aún no hay partidas</text>
+    <text key="scores.level">N{level}</text>
+    <text key="scores.back">Toca para volver</text>
+    <text key="game.points">Puntos {score}</text>
+    <text key="game.level">Nivel {level}</text>
+    <text key="game.record">Récord {score}</text>
+    <text key="game.hover">{count} orbes: +{points}</text>
+    <text key="game.best_chain">Mejor cadena {count}</text>
+    <text key="game.new_row_now">¡Fila nueva ahora!</text>
+    <text key="game.new_row_in">Fila nueva en {count}</text>
+    <text key="game.level_banner">Nivel {level}  (+{bonus})</text>
+    <text key="over.title">Fin de la partida</text>
+    <text key="over.points">Puntos: {score}</text>
+    <text key="over.stats">Nivel {level}  ·  mejor cadena {chain}</text>
+    <text key="over.new_record">¡Nuevo récord!</text>
+    <text key="over.back">Toca para volver al menú</text>
+    <text key="player.default">Jugador</text>
+  </language>
+
+  <language code="en" name="English" flag="uk">
+    <text key="menu.subtitle">Tap chains of same-coloured orbs</text>
+    <text key="menu.play">Play</text>
+    <text key="menu.scores">High scores</text>
+    <text key="menu.assist">Colour assist: {state}</text>
+    <text key="menu.quit">Quit</text>
+    <text key="menu.record">Best: {score}</text>
+    <text key="common.yes">on</text>
+    <text key="common.no">off</text>
+    <text key="scores.title">High scores</text>
+    <text key="scores.empty">No games yet</text>
+    <text key="scores.level">L{level}</text>
+    <text key="scores.back">Tap to go back</text>
+    <text key="game.points">Score {score}</text>
+    <text key="game.level">Level {level}</text>
+    <text key="game.record">Best {score}</text>
+    <text key="game.hover">{count} orbs: +{points}</text>
+    <text key="game.best_chain">Best chain {count}</text>
+    <text key="game.new_row_now">New row now!</text>
+    <text key="game.new_row_in">New row in {count}</text>
+    <text key="game.level_banner">Level {level}  (+{bonus})</text>
+    <text key="over.title">Game over</text>
+    <text key="over.points">Score: {score}</text>
+    <text key="over.stats">Level {level}  ·  best chain {chain}</text>
+    <text key="over.new_record">New record!</text>
+    <text key="over.back">Tap to return to the menu</text>
+    <text key="player.default">Player</text>
+  </language>
+
+  <language code="fr" name="Français" flag="fr">
+    <text key="menu.subtitle">Éclatez les orbes de même couleur</text>
+    <text key="menu.play">Jouer</text>
+    <text key="menu.scores">Scores</text>
+    <text key="menu.assist">Aide couleur : {state}</text>
+    <text key="menu.quit">Quitter</text>
+    <text key="menu.record">Record : {score}</text>
+    <text key="common.yes">oui</text>
+    <text key="common.no">non</text>
+    <text key="scores.title">Scores</text>
+    <text key="scores.empty">Aucune partie</text>
+    <text key="scores.level">N{level}</text>
+    <text key="scores.back">Touchez pour revenir</text>
+    <text key="game.points">Points {score}</text>
+    <text key="game.level">Niveau {level}</text>
+    <text key="game.record">Record {score}</text>
+    <text key="game.hover">{count} orbes : +{points}</text>
+    <text key="game.best_chain">Meilleure chaîne {count}</text>
+    <text key="game.new_row_now">Nouvelle ligne !</text>
+    <text key="game.new_row_in">Nouvelle ligne dans {count}</text>
+    <text key="game.level_banner">Niveau {level}  (+{bonus})</text>
+    <text key="over.title">Partie terminée</text>
+    <text key="over.points">Points : {score}</text>
+    <text key="over.stats">Niveau {level}  ·  chaîne max {chain}</text>
+    <text key="over.new_record">Nouveau record !</text>
+    <text key="over.back">Touchez pour revenir au menu</text>
+    <text key="player.default">Joueur</text>
+  </language>
+</translations>

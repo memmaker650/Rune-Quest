@@ -6,7 +6,7 @@ import sys
 
 import pygame
 
-from . import __version__
+from . import __version__, translations
 from . import settings as S
 from .db import Database, default_db_path
 from .display import Display
@@ -23,9 +23,11 @@ class App:
         passed, failed = pygame.init()
         if failed:
             log.warning("pygame.init(): %d módulos no se pudieron inicializar", failed)
-        pygame.display.set_caption("Orbes")
+        pygame.display.set_caption("Rune Quest")
         self.display = Display()
         self.db = Database(db_path or default_db_path())
+        translations.load()
+        translations.set_language(self.db.get_setting("language", translations.current().code))
         self.clock = pygame.time.Clock()
         self.running = True
         self.scene = MenuScene(self)

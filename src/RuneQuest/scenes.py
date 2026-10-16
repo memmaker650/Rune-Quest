@@ -8,11 +8,13 @@ import sys
 
 import pygame
 
+from . import translations
 from . import settings as S
 from .controls import is_confirm, is_real_mouse_motion, tap_position
 from .game import Game, clear_points
 from .sprites import orb_sprite
-from .ui import Button, draw_text
+from .translations import t
+from .ui import Button, FlagButton, draw_text
 
 log = logging.getLogger(__name__)
 
@@ -42,18 +44,33 @@ class MenuScene(Scene):
         self.font = pygame.font.Font(None, 36)
         self.small = pygame.font.Font(None, 22)
         self.t = 0.0
+        self._build_buttons()
+        self.best = app.db.best_score()
+
+    def _build_buttons(self):
+        """(Re)crea los botones con los textos del idioma activo."""
         self.buttons = [
-            ("play", Button((60, 330, 240, 54), "Jugar")),
-            ("scores", Button((60, 396, 240, 54), "Puntuaciones")),
+            ("play", Button((60, 330, 240, 54), t("menu.play"))),
+            ("scores", Button((60, 396, 240, 54), t("menu.scores"))),
             ("assist", Button((60, 462, 240, 54), self._assist_label())),
         ]
         if not IS_IOS:  # en iOS no se "sale" de una app
-            self.buttons.append(("quit", Button((60, 528, 240, 54), "Salir")))
-        self.best = app.db.best_score()
+            self.buttons.append(("quit", Button((60, 528, 240, 54), t("menu.quit"))))
+        self.lang_button = FlagButton((S.LOGICAL_W - 66, S.LOGICAL_H - 52, 54, 38),
+                                      translations.current().flag)
 
     def _assist_label(self) -> str:
         on = self.app.db.get_setting("color_assist", "0") == "1"
-        return f"Ayuda de color: {'sí' if on else 'no'}"
+        return t("menu.assist", state=t("common.yes") if on else t("common.no"))
+
+    def _next_language(self):
+        lang = translations.next_language()
+        translations.set_language(lang.code)
+        try:
+            self.app.db.set_setting("language", lang.code)
+        except sqlite3.Error:
+            log.error("No se pudo guardar el idioma %s; solo se aplica a esta sesión", lang.code)
+        self._build_buttons()
 
     def _activate(self, name):
         if name == "play":
@@ -66,7 +83,7 @@ class MenuScene(Scene):
                 self.app.db.set_setting("color_assist", "0" if on else "1")
             except sqlite3.Error:
                 log.error("No se pudo cambiar la ayuda de color; se mantiene como estaba")
-            self.buttons[2] = ("assist", Button((60, 462, 240, 54), self._assist_label()))
+            self._build_buttons()
         elif name == "quit":
             self.app.quit()
         else:
@@ -75,6 +92,9 @@ class MenuScene(Scene):
     def handle_event(self, event):
         pos = tap_position(event, self.app.display)
         if pos is not None:
+            if self.lang_button.hit(pos):
+                self._next_language()
+                return
             for name, button in self.buttons:
                 if button.hit(pos):
                     self._activate(name)
@@ -97,12 +117,13 @@ class MenuScene(Scene):
             sprite = orb_sprite(i, 52, assist)
             surf.blit(sprite, sprite.get_rect(center=(x, y)))
         draw_text(surf, self.title_font, "ORBES", S.ACCENT, center=(S.LOGICAL_W // 2, 120))
-        draw_text(surf, self.small, "Toca cadenas de orbes del mismo color", S.WHITE,
+        draw_text(surf, self.small, t("menu.subtitle"), S.WHITE,
                   center=(S.LOGICAL_W // 2, 290))
         for _, button in self.buttons:
             button.draw(surf, self.font)
+        self.lang_button.draw(surf)
         if self.best:
-            draw_text(surf, self.small, f"Récord: {self.best}", S.WHITE,
+            draw_text(surf, self.small, t("menu.record", score=self.best), S.WHITE,
                       center=(S.LOGICAL_W // 2, S.LOGICAL_H - 40))
 
 
@@ -121,16 +142,17 @@ class ScoresScene(Scene):
 
     def draw(self, surf):
         surf.fill(S.BG)
-        draw_text(surf, self.title, "Puntuaciones", S.ACCENT, center=(S.LOGICAL_W // 2, 70))
+        draw_text(surf, self.title, t("scores.title"), S.ACCENT, center=(S.LOGICAL_W // 2, 70))
         if not self.rows:
-            draw_text(surf, self.font, "Aún no hay partidas", S.WHITE,
+            draw_text(surf, self.font, t("scores.empty"), S.WHITE,
                       center=(S.LOGICAL_W // 2, 200))
         for i, row in enumerate(self.rows):
             y = 130 + i * 40
             draw_text(surf, self.font, f"{i + 1:>2}.  {row['player']}", S.WHITE, topleft=(30, y))
-            draw_text(surf, self.font, f"{row['score']}  (N{row['level']})", S.BUTTON_EDGE,
+            draw_text(surf, self.font, f"{row['score']}  ({t('scores.level', level=row['level'])})",
+                      S.BUTTON_EDGE,
                       topleft=(215, y))
-        draw_text(surf, self.font, "Toca para volver", S.WHITE,
+        draw_text(surf, self.font, t("scores.back"), S.WHITE,
                   center=(S.LOGICAL_W // 2, S.LOGICAL_H - 60))
 
 
@@ -219,7 +241,7 @@ class GameScene(Scene):
             elif ev.kind == "push":
                 self._apply_moves(d["moves"])
             elif ev.kind == "level":
-                self.banner = [f"Nivel {d['level']}  (+{d['bonus']})", 1.6]
+                self.banner = [t("game.level_banner", level=d["level"], bonus=d["bonus"]), 1.6]
                 self.offsets = {}
                 for r in range(S.ROWS):
                     for c in range(S.COLS):
@@ -236,7 +258,7 @@ class GameScene(Scene):
             return
         self.saved = True
         if self.game.score > 0:
-            name = self.app.db.get_setting("player_name", "Jugador")
+            name = self.app.db.get_setting("player_name", t("player.default"))
             try:
                 self.app.db.add_score(name, self.game.score, self.game.level)
             except sqlite3.Error:
@@ -322,15 +344,18 @@ class GameScene(Scene):
 
     def _draw_hud(self, surf, hover_info):
         g = self.game
-        draw_text(surf, self.hud, f"Puntos {g.score}", S.WHITE, topleft=(12, 12))
-        draw_text(surf, self.hud, f"Nivel {g.level}", S.WHITE, topleft=(S.LOGICAL_W - 100, 12))
-        draw_text(surf, self.small, f"Récord {self.best}", S.BUTTON_EDGE, topleft=(12, 44))
+        draw_text(surf, self.hud, t("game.points", score=g.score), S.WHITE, topleft=(12, 12))
+        draw_text(surf, self.hud, t("game.level", level=g.level), S.WHITE,
+                  topright=(S.LOGICAL_W - 12, 12))
+        draw_text(surf, self.small, t("game.record", score=self.best), S.BUTTON_EDGE,
+                  topleft=(12, 44))
         if hover_info:
             n, pts = hover_info
-            draw_text(surf, self.small, f"{n} orbes: +{pts}", S.ACCENT,
-                      topleft=(S.LOGICAL_W - 130, 44))
+            draw_text(surf, self.small, t("game.hover", count=n, points=pts), S.ACCENT,
+                      topright=(S.LOGICAL_W - 12, 44))
         # Mejor cadena
-        draw_text(surf, self.small, f"Mejor cadena {g.best_chain}", S.WHITE, topleft=(12, 70))
+        draw_text(surf, self.small, t("game.best_chain", count=g.best_chain), S.WHITE,
+                  topleft=(12, 70))
 
     def _draw_bottom(self, surf):
         g = self.game
@@ -346,7 +371,8 @@ class GameScene(Scene):
             x = S.LOGICAL_W // 2 + (i - (g.interval - 1) / 2) * 26
             pygame.draw.circle(surf, S.ACCENT if filled else S.BUTTON, (round(x), y0 + 72), 8)
             pygame.draw.circle(surf, S.BUTTON_EDGE, (round(x), y0 + 72), 8, 2)
-        txt = "¡Fila nueva ahora!" if g.pushes_in <= 0 else f"Fila nueva en {g.pushes_in}"
+        txt = (t("game.new_row_now") if g.pushes_in <= 0
+               else t("game.new_row_in", count=g.pushes_in))
         draw_text(surf, self.small, txt, S.WHITE, center=(S.LOGICAL_W // 2, y0 + 98))
 
     def _draw_over(self, surf):
@@ -355,11 +381,11 @@ class GameScene(Scene):
         dim.fill((0, 0, 0, 170))
         surf.blit(dim, (0, 0))
         cx = S.LOGICAL_W // 2
-        draw_text(surf, self.big, "Fin de la partida", S.ACCENT, center=(cx, 290))
-        draw_text(surf, self.hud, f"Puntos: {g.score}", S.WHITE, center=(cx, 350))
-        draw_text(surf, self.hud, f"Nivel {g.level}  ·  mejor cadena {g.best_chain}",
+        draw_text(surf, self.big, t("over.title"), S.ACCENT, center=(cx, 290))
+        draw_text(surf, self.hud, t("over.points", score=g.score), S.WHITE, center=(cx, 350))
+        draw_text(surf, self.hud, t("over.stats", level=g.level, chain=g.best_chain),
                   S.WHITE, center=(cx, 385))
         if g.score and g.score >= self.best:
-            draw_text(surf, self.hud, "¡Nuevo récord!", S.BUTTON_EDGE, center=(cx, 425))
+            draw_text(surf, self.hud, t("over.new_record"), S.BUTTON_EDGE, center=(cx, 425))
         if self.over_t > 0.6:
-            draw_text(surf, self.small, "Toca para volver al menú", S.WHITE, center=(cx, 480))
+            draw_text(surf, self.small, t("over.back"), S.WHITE, center=(cx, 480))
