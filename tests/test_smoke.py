@@ -10,6 +10,7 @@ from RuneQuest.scenes import GameScene, MenuScene, ScoresScene
 def _click(app, x, y):
     # La ventana tiene el tamaño lógico (escala 1, sin barras): coordenadas de ventana == lógicas.
     pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=1))
+    pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x, y), button=1))
 
 
 def test_menu_and_scores_run_headless(tmp_path):
@@ -95,3 +96,16 @@ def test_game_over_removes_saved_game(tmp_path):
     app.run(max_frames=2)
     from RuneQuest.db import Database
     assert not Database(tmp_path / "t.db").has_saved_game()
+
+
+def test_menu_button_darkens_while_pressed_and_acts_on_release(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    menu = app.scene
+    down = pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(100, 340), button=1)
+    menu.handle_event(down)                                   # pulsa "Jugar"
+    assert menu.buttons[0][1].pressed and app.scene is menu   # oscuro, aún no actúa
+    menu.handle_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(100, 600), button=1))
+    assert not menu.buttons[0][1].pressed and app.scene is menu   # soltar fuera cancela
+    menu.handle_event(down)
+    menu.handle_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(110, 345), button=1))
+    assert isinstance(app.scene, GameScene)

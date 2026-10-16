@@ -4,6 +4,9 @@
 APP_NAME = "RuneQuest"
 LEGACY_APP_NAME = "Orbes"         # carpetas de versiones anteriores (se migra la BDD)
 
+# --- Game Center: debe coincidir con el ID de la clasificación en App Store Connect ---
+GAMECENTER_LEADERBOARD_ID = "runequest_highscores"
+
 # --- Tablero ---
 COLS = 8
 ROWS = 14
@@ -35,6 +38,7 @@ WHITE = (240, 240, 250)
 BLACK = (0, 0, 0)
 ACCENT = (150, 210, 255)
 BUTTON = (50, 60, 120)
+BUTTON_PRESSED = (28, 34, 72)     # botón mientras se mantiene pulsado
 BUTTON_EDGE = (120, 140, 230)
 
 PALETTE = [

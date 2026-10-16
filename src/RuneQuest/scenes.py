@@ -10,7 +10,7 @@ import pygame
 
 from . import translations
 from . import settings as S
-from .controls import is_confirm, is_real_mouse_motion, tap_position
+from .controls import is_confirm, is_real_mouse_motion, release_position, tap_position
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
@@ -44,6 +44,7 @@ class MenuScene(Scene):
         self.font = pygame.font.Font(None, 36)
         self.small = pygame.font.Font(None, 22)
         self.t = 0.0
+        self.pressed = None          # (nombre, botón) pulsado y aún sin soltar
         self._build_buttons()
         self.best = app.db.best_score()
 
@@ -109,17 +110,37 @@ class MenuScene(Scene):
         else:
             log.warning("Botón de menú desconocido: %r", name)
 
+    def _button_at(self, pos):
+        if self.lang_button.hit(pos):
+            return "lang", self.lang_button
+        for name, button in self.buttons:
+            if button.hit(pos):
+                return name, button
+        return None
+
     def handle_event(self, event):
+        # Al pulsar el botón se oscurece; la acción se ejecuta al soltar encima de él
+        # (soltar fuera la cancela).
         pos = tap_position(event, self.app.display)
         if pos is not None:
-            if self.lang_button.hit(pos):
-                self._next_language()
+            self.pressed = self._button_at(pos)
+            if self.pressed:
+                self.pressed[1].pressed = True
+            return
+        pos = release_position(event, self.app.display)
+        if pos is not None:
+            pressed, self.pressed = self.pressed, None
+            if pressed is None:
                 return
-            for name, button in self.buttons:
-                if button.hit(pos):
+            name, button = pressed
+            button.pressed = False
+            if button.hit(pos):
+                if name == "lang":
+                    self._next_language()
+                else:
                     self._activate(name)
-                    return
-        elif event.type == pygame.KEYDOWN:
+            return
+        if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
                 self._activate(self.buttons[0][0])   # "Continuar" si existe; si no, "Jugar"
             elif event.key == pygame.K_ESCAPE and not IS_IOS:
@@ -145,6 +166,10 @@ class MenuScene(Scene):
         if self.best:
             draw_text(surf, self.small, t("menu.record", score=self.best), S.WHITE,
                       center=(S.LOGICAL_W // 2, S.LOGICAL_H - 40))
+        gc = self.app.gamecenter
+        if gc.authenticated:
+            draw_text(surf, self.small, t("menu.gc_player", name=gc.player_name), S.ACCENT,
+                      center=(S.LOGICAL_W // 2, S.LOGICAL_H - 70))
 
 
 # --------------------------------------------------------------------------- puntuaciones
@@ -154,8 +179,24 @@ class ScoresScene(Scene):
         self.title = pygame.font.Font(None, 56)
         self.font = pygame.font.Font(None, 30)
         self.rows = app.db.top_scores(10)
+        self.gc_button = Button((60, S.LOGICAL_H - 140, 240, 52), t("scores.gamecenter"))
+
+    def _gc_button_visible(self) -> bool:
+        return self.app.gamecenter.authenticated
 
     def handle_event(self, event):
+        # El botón de Game Center se oscurece al pulsarlo y actúa al soltar (como en el menú);
+        # tocar en cualquier otro sitio vuelve al menú.
+        pos = tap_position(event, self.app.display)
+        if pos is not None and self._gc_button_visible() and self.gc_button.hit(pos):
+            self.gc_button.pressed = True
+            return
+        up = release_position(event, self.app.display)
+        if up is not None and self.gc_button.pressed:
+            self.gc_button.pressed = False
+            if self.gc_button.hit(up):
+                self.app.gamecenter.show_leaderboards()
+            return
         if is_confirm(event, self.app.display) or (
                 event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             self.app.change_scene(MenuScene(self.app))
@@ -172,6 +213,8 @@ class ScoresScene(Scene):
             draw_text(surf, self.font, f"{row['score']}  ({t('scores.level', level=row['level'])})",
                       S.BUTTON_EDGE,
                       topleft=(215, y))
+        if self._gc_button_visible():
+            self.gc_button.draw(surf, self.font)
         draw_text(surf, self.font, t("scores.back"), S.WHITE,
                   center=(S.LOGICAL_W // 2, S.LOGICAL_H - 60))
 
@@ -288,7 +331,9 @@ class GameScene(Scene):
             return
         self.saved = True
         if self.game.score > 0:
-            name = self.app.db.get_setting("player_name", t("player.default"))
+            self.app.gamecenter.submit_score(self.game.score)
+            name = (self.app.gamecenter.player_name
+                    or self.app.db.get_setting("player_name", t("player.default")))
             try:
                 self.app.db.add_score(name, self.game.score, self.game.level)
             except sqlite3.Error:
