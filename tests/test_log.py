@@ -33,7 +33,7 @@ def test_daily_handler_switches_file_at_midnight(tmp_path):
 
 def test_legacy_database_is_copied_once(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "_data_dir", lambda name: tmp_path / name)
-    legacy = tmp_path / "Orbes" / db.LEGACY_DB_NAME
+    legacy = tmp_path / db.S.LEGACY_APP_NAME / db.LEGACY_DB_NAME
     legacy.parent.mkdir()
     old = db.Database(legacy); old.add_score("Ana", 500, 2); old.close()
 

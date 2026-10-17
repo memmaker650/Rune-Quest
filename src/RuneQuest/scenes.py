@@ -171,6 +171,22 @@ class MenuScene(ButtonScene):
     def update(self, dt):
         self.t += dt
 
+    def _draw_title(self, surf):
+        """"Rune" arriba y "Quest" debajo empezando justo bajo la "n": el bloque escalonado
+        queda centrado en conjunto, con "Rune" desplazado a la izquierda."""
+        font = self.title_font
+        first, second = "Rune", "Quest"
+        indent = font.size("Ru")[0]                  # x de la "n" dentro de "Rune"
+        width = max(font.size(first)[0], indent + font.size(second)[0])
+        left = (S.LOGICAL_W - width) // 2
+        line_gap = font.get_ascent()                 # sin interlineado extra: bloque compacto
+        top = 44
+        for text, x, y in ((first, left, top), (second, left + indent, top + line_gap)):
+            shadow = font.render(text, True, S.BLACK)
+            shadow.set_alpha(110)
+            surf.blit(shadow, (x + 3, y + 4))
+            surf.blit(font.render(text, True, S.ACCENT), (x, y))
+
     def draw(self, surf):
         surf.fill(S.BG)
         assist = self.app.db.get_setting("color_assist", "0") == "1"
@@ -179,7 +195,7 @@ class MenuScene(ButtonScene):
             y = 210 + math.sin(self.t * 1.7 + i * 1.1) * 14
             sprite = orb_sprite(i, 52, assist)
             surf.blit(sprite, sprite.get_rect(center=(x, y)))
-        draw_text(surf, self.title_font, "Rune Quest", S.ACCENT, center=(S.LOGICAL_W // 2, 120))
+        self._draw_title(surf)
         draw_text(surf, self.small, t("menu.subtitle"), S.WHITE,
                   center=(S.LOGICAL_W // 2, 290))
         for _, button in self.buttons:
