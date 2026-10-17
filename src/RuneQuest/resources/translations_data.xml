@@ -11,7 +11,10 @@
     <text key="menu.continue">Continuar</text>
     <text key="menu.play">Jugar</text>
     <text key="menu.scores">Puntuaciones</text>
-    <text key="menu.assist">Ayuda de color: {state}</text>
+    <text key="menu.assist">Ayuda</text>
+    <text key="assist.none">No</text>
+    <text key="assist.geo">Geo</text>
+    <text key="assist.runes">Runas</text>
     <text key="menu.record">Récord: {score}</text>
     <text key="menu.gc_player">Game Center: {name}</text>
     <text key="play.title">Nueva partida</text>
@@ -21,8 +24,6 @@
     <text key="mode.classic">Clásico</text>
     <text key="mode.fast">Rápido</text>
     <text key="mode.surprise">Sorpresa</text>
-    <text key="common.yes">sí</text>
-    <text key="common.no">no</text>
     <text key="scores.title">Puntuaciones</text>
     <text key="scores.empty">Aún no hay partidas</text>
     <text key="scores.level">N{level}</text>
@@ -49,7 +50,10 @@
     <text key="menu.continue">Continue</text>
     <text key="menu.play">Play</text>
     <text key="menu.scores">High scores</text>
-    <text key="menu.assist">Colour assist: {state}</text>
+    <text key="menu.assist">Assist</text>
+    <text key="assist.none">Off</text>
+    <text key="assist.geo">Geo</text>
+    <text key="assist.runes">Runes</text>
     <text key="menu.record">Best: {score}</text>
     <text key="menu.gc_player">Game Center: {name}</text>
     <text key="play.title">New game</text>
@@ -59,8 +63,6 @@
     <text key="mode.classic">Classic</text>
     <text key="mode.fast">Fast</text>
     <text key="mode.surprise">Surprise</text>
-    <text key="common.yes">on</text>
-    <text key="common.no">off</text>
     <text key="scores.title">High scores</text>
     <text key="scores.empty">No games yet</text>
     <text key="scores.level">L{level}</text>
@@ -87,7 +89,10 @@
     <text key="menu.continue">Continuer</text>
     <text key="menu.play">Jouer</text>
     <text key="menu.scores">Scores</text>
-    <text key="menu.assist">Aide couleur : {state}</text>
+    <text key="menu.assist">Aide</text>
+    <text key="assist.none">Non</text>
+    <text key="assist.geo">Géo</text>
+    <text key="assist.runes">Runes</text>
     <text key="menu.record">Record : {score}</text>
     <text key="menu.gc_player">Game Center : {name}</text>
     <text key="play.title">Nouvelle partie</text>
@@ -97,8 +102,6 @@
     <text key="mode.classic">Classique</text>
     <text key="mode.fast">Rapide</text>
     <text key="mode.surprise">Surprise</text>
-    <text key="common.yes">oui</text>
-    <text key="common.no">non</text>
     <text key="scores.title">Scores</text>
     <text key="scores.empty">Aucune partie</text>
     <text key="scores.level">N{level}</text>

@@ -19,6 +19,18 @@ from .ui import Button, CloseButton, FlagButton, ModeButton, draw_text
 log = logging.getLogger(__name__)
 
 IS_IOS = sys.platform == "ios"
+
+
+def assist_mode(db) -> str:
+    """Ayuda visual elegida ("none", "geo" o "runes"). Hereda el ajuste antiguo "color_assist"
+    (sí/no) de versiones anteriores, que equivale a "geo"."""
+    mode = db.get_setting("assist")
+    if mode in S.ASSIST_MODES:
+        return mode
+    if mode is not None:
+        log.warning("Ayuda visual desconocida %r en los ajustes; se usa 'none'", mode)
+        return "none"
+    return "geo" if db.get_setting("color_assist", "0") == "1" else "none"
 BOARD_RECT = pygame.Rect(S.BOARD_X, S.BOARD_Y, S.BOARD_W, S.BOARD_H)
 
 
@@ -91,16 +103,18 @@ class MenuScene(ButtonScene):
         entries += [
             ("play", t("menu.play")),
             ("scores", t("menu.scores")),
-            ("assist", self._assist_label()),
         ]
-        self.buttons = [(name, Button((60, 316 + i * 62, 240, 52), label))
-                        for i, (name, label) in enumerate(entries)]
+        self.buttons = []
+        y = 316
+        for name, label in entries:
+            self.buttons.append((name, Button((60, y, 240, 52), label)))
+            y += 62
+        assist = assist_mode(self.app.db)
+        self.buttons.append(("assist", ModeButton(
+            (60, y, 240, 70), t("menu.assist"), t(f"assist.{assist}"),
+            S.ASSIST_MODES.index(assist), len(S.ASSIST_MODES), self.small)))
         self.lang_button = FlagButton((S.LOGICAL_W - 66, S.LOGICAL_H - 52, 54, 38),
                                       translations.current().flag)
-
-    def _assist_label(self) -> str:
-        on = self.app.db.get_setting("color_assist", "0") == "1"
-        return t("menu.assist", state=t("common.yes") if on else t("common.no"))
 
     def _next_language(self):
         lang = translations.next_language()
@@ -132,11 +146,14 @@ class MenuScene(ButtonScene):
         elif name == "scores":
             self.app.change_scene(ScoresScene(self.app))
         elif name == "assist":
-            on = self.app.db.get_setting("color_assist", "0") == "1"
+            current = S.ASSIST_MODES.index(assist_mode(self.app.db))
+            mode = S.ASSIST_MODES[(current + 1) % len(S.ASSIST_MODES)]
             try:
-                self.app.db.set_setting("color_assist", "0" if on else "1")
+                self.app.db.set_setting("assist", mode)
             except sqlite3.Error:
-                log.error("No se pudo cambiar la ayuda de color; se mantiene como estaba")
+                log.error("No se pudo cambiar la ayuda visual; se mantiene como estaba")
+            else:
+                log.info("Ayuda visual: %s", mode)
             self._build_buttons()
         elif name == "quit":
             self.app.quit()
@@ -189,7 +206,7 @@ class MenuScene(ButtonScene):
 
     def draw(self, surf):
         surf.fill(S.BG)
-        assist = self.app.db.get_setting("color_assist", "0") == "1"
+        assist = assist_mode(self.app.db)
         for i in range(S.MAX_COLORS):  # orbes decorativos flotando
             x = 30 + i * 60 + math.sin(self.t * 1.3 + i) * 10
             y = 210 + math.sin(self.t * 1.7 + i * 1.1) * 14
@@ -329,7 +346,7 @@ class GameScene(Scene):
         """Partida nueva en el modo ``mode``, o la ``game`` restaurada de la base de datos."""
         super().__init__(app)
         self.game = game or Game(seed=seed, mode=mode)
-        self.assist = app.db.get_setting("color_assist", "0") == "1"
+        self.assist = assist_mode(app.db)
         self.best = app.db.best_score()
         self.hud = pygame.font.Font(None, 28)
         self.small = pygame.font.Font(None, 22)

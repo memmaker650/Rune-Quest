@@ -24,6 +24,9 @@ FPS = 60
 # --- Modos de juego (de momento todos usan las mismas reglas) ---
 GAME_MODES = ("classic", "fast", "surprise")
 
+# --- Ayuda visual sobre los orbes: ninguna, formas geométricas o runas nórdicas ---
+ASSIST_MODES = ("none", "geo", "runes")
+
 # --- Reglas ---
 MIN_GROUP = 3                    # orbes conectados mínimos para poder reventar
 POINTS_PER_PAIR = 10             # puntos = n * (n - 1) * POINTS_PER_PAIR
