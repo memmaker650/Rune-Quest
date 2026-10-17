@@ -2,7 +2,7 @@
 
 # --- Carpetas de usuario (datos y logs) ---
 APP_NAME = "RuneQuest"
-LEGACY_APP_NAME = "Orbes"         # carpetas de versiones anteriores (se migra la BDD)
+LEGACY_APP_NAME = "RuneQuest"         # carpetas de versiones anteriores (se migra la BDD)
 
 # --- Game Center: debe coincidir con el ID de la clasificación en App Store Connect ---
 GAMECENTER_LEADERBOARD_ID = "runequest_highscores"
@@ -20,6 +20,9 @@ BOARD_H = ROWS * CELL            # 630
 LOGICAL_W = BOARD_W
 LOGICAL_H = 760
 FPS = 60
+
+# --- Modos de juego (de momento todos usan las mismas reglas) ---
+GAME_MODES = ("classic", "fast", "surprise")
 
 # --- Reglas ---
 MIN_GROUP = 3                    # orbes conectados mínimos para poder reventar

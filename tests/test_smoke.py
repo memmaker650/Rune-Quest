@@ -4,7 +4,7 @@ import pygame
 
 from RuneQuest import settings as S
 from RuneQuest.app import App
-from RuneQuest.scenes import GameScene, MenuScene, ScoresScene
+from RuneQuest.scenes import GameScene, MenuScene, NewGameScene, ScoresScene
 
 
 def _click(app, x, y):
@@ -23,11 +23,19 @@ def test_menu_and_scores_run_headless(tmp_path):
     app.run(max_frames=3)
 
 
-def test_play_button_starts_a_game(tmp_path):
+def test_play_button_opens_new_game_screen_and_starts_a_game(tmp_path):
     app = App(db_path=tmp_path / "t.db")
     _click(app, 100, 350)                       # botón "Jugar"
     app.run(max_frames=3)
+    assert isinstance(app.scene, NewGameScene)
+
+    app = App(db_path=tmp_path / "t.db")
+    scene = NewGameScene(app)
+    app.change_scene(scene)
+    _click(app, *scene.start_button.rect.center)       # "Empezar partida"
+    app.run(max_frames=3)
     assert isinstance(app.scene, GameScene)
+    assert app.scene.game.mode == "classic"
 
 
 def test_clicking_a_group_scores_points(tmp_path):
@@ -108,4 +116,44 @@ def test_menu_button_darkens_while_pressed_and_acts_on_release(tmp_path):
     assert not menu.buttons[0][1].pressed and app.scene is menu   # soltar fuera cancela
     menu.handle_event(down)
     menu.handle_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(110, 345), button=1))
-    assert isinstance(app.scene, GameScene)
+    assert isinstance(app.scene, NewGameScene)
+
+
+def _tap(scene, pos):
+    scene.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=pos, button=1))
+    scene.handle_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=pos, button=1))
+
+
+def test_menu_has_close_button_instead_of_quit(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    menu = app.scene
+    assert "quit" not in [name for name, _ in menu.buttons]
+    close, flag = menu.close_button.rect, menu.lang_button.rect
+    assert close.width == close.height                       # cuadrado
+    assert close.left < S.LOGICAL_W // 2 and close.centery == flag.centery   # abajo izq.
+    _tap(menu, close.center)
+    assert app.running is False
+
+
+def test_game_mode_cycles_persists_and_reaches_the_game(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    scene = NewGameScene(app)
+    app.change_scene(scene)
+    assert scene.mode == "classic"
+    _tap(scene, scene.mode_button.rect.center)
+    assert scene.mode == "fast" and scene.mode_button.label == "Rápido"
+    _tap(scene, scene.mode_button.rect.center)
+    _tap(scene, scene.mode_button.rect.center)
+    assert scene.mode == "classic"                           # Clásico -> Rápido -> Sorpresa -> ...
+    _tap(scene, scene.mode_button.rect.center)
+    assert NewGameScene(app).mode == "fast"                  # se recuerda
+    _tap(scene, scene.start_button.rect.center)
+    assert app.scene.game.mode == "fast"
+
+
+def test_back_button_returns_to_menu(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    scene = NewGameScene(app)
+    app.change_scene(scene)
+    _tap(scene, scene.back_button.rect.center)
+    assert isinstance(app.scene, MenuScene)

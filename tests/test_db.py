@@ -27,7 +27,7 @@ def test_settings_roundtrip_and_overwrite():
 
 def test_schema_version_is_set():
     db = Database(":memory:")
-    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 3
 
 
 def test_persists_on_disk(tmp_path):
@@ -38,7 +38,7 @@ def test_persists_on_disk(tmp_path):
     assert Database(path).top_scores()[0]["player"] == "z"
 
 
-STATE = {"score": 1234, "level": 3, "taps": 7, "rains": 1, "best_chain": 9,
+STATE = {"score": 1234, "level": 3, "taps": 7, "rains": 1, "best_chain": 9, "mode": "fast",
          "rows": 14, "cols": 8, "balls": [[13, 0, 2], [13, 1, 0], [12, 0, 5]]}
 
 
@@ -64,7 +64,7 @@ def test_v1_database_gets_estado_partida_table(tmp_path):
     conn.execute("INSERT INTO scores (player, score, level) VALUES ('Ana', 10, 1)")
     conn.commit(); conn.close()
     db = Database(path)
-    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 3
     assert db.best_score() == 10                 # los datos v1 se conservan
     db.save_game(STATE)
     assert db.load_game() == STATE
@@ -76,3 +76,19 @@ def test_corrupt_saved_game_is_discarded():
     db.conn.execute("UPDATE EstadoPartida SET bolas = 'no es json'")
     assert db.load_game() is None
     assert not db.has_saved_game()
+
+
+def test_v2_saved_game_gets_classic_mode(tmp_path):
+    import json
+    import sqlite3
+    from RuneQuest.db import SCHEMA_V1, SCHEMA_V2
+
+    path = tmp_path / "v2.db"
+    conn = sqlite3.connect(path)
+    conn.executescript(SCHEMA_V1)
+    conn.executescript(SCHEMA_V2)
+    conn.execute("INSERT INTO EstadoPartida (id, puntuacion, nivel, filas, columnas, bolas) "
+                 "VALUES (1, 50, 1, 14, 8, ?)", (json.dumps([[13, 0, 1]]),))
+    conn.commit(); conn.close()
+    db = Database(path)
+    assert db.load_game()["mode"] == "classic"   # partidas guardadas antes de los modos

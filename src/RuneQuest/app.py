@@ -79,7 +79,6 @@ class App:
             self.db.close()
             pygame.quit()
 
-
 def main():
     setup_logging()
     App().run()

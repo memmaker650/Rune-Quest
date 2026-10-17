@@ -1,4 +1,4 @@
-"""Escenas: menú, partida y puntuaciones."""
+"""Escenas: menú, nueva partida, partida y puntuaciones."""
 
 import logging
 import math
@@ -14,7 +14,7 @@ from .controls import is_confirm, is_real_mouse_motion, release_position, tap_po
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
-from .ui import Button, FlagButton, draw_text
+from .ui import Button, CloseButton, FlagButton, ModeButton, draw_text
 
 log = logging.getLogger(__name__)
 
@@ -36,15 +36,50 @@ class Scene:
         pass
 
 
+class ButtonScene(Scene):
+    """Escena con botones que se oscurecen al pulsar y actúan al soltar encima
+    (soltar fuera cancela). Las subclases definen ``_button_at`` y ``_on_click``."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.pressed = None          # (nombre, botón) pulsado y aún sin soltar
+
+    def _button_at(self, pos):
+        return None
+
+    def _on_click(self, name):
+        pass
+
+    def handle_pointer(self, event) -> bool:
+        """Procesa pulsar/soltar. True si el evento era de puntero (ya consumido)."""
+        pos = tap_position(event, self.app.display)
+        if pos is not None:
+            self.pressed = self._button_at(pos)
+            if self.pressed:
+                self.pressed[1].pressed = True
+            return True
+        pos = release_position(event, self.app.display)
+        if pos is not None:
+            pressed, self.pressed = self.pressed, None
+            if pressed is not None:
+                name, button = pressed
+                button.pressed = False
+                if button.hit(pos):
+                    self._on_click(name)
+            return True
+        return False
+
+
 # --------------------------------------------------------------------------- menú
-class MenuScene(Scene):
+class MenuScene(ButtonScene):
     def __init__(self, app):
         super().__init__(app)
         self.title_font = pygame.font.Font(None, 96)
         self.font = pygame.font.Font(None, 36)
         self.small = pygame.font.Font(None, 22)
         self.t = 0.0
-        self.pressed = None          # (nombre, botón) pulsado y aún sin soltar
+        # Salir: botón cuadrado abajo a la izquierda, alineado con la bandera (en iOS no se sale).
+        self.close_button = None if IS_IOS else CloseButton((12, S.LOGICAL_H - 52, 38, 38))
         self._build_buttons()
         self.best = app.db.best_score()
 
@@ -58,8 +93,6 @@ class MenuScene(Scene):
             ("scores", t("menu.scores")),
             ("assist", self._assist_label()),
         ]
-        if not IS_IOS:  # en iOS no se "sale" de una app
-            entries.append(("quit", t("menu.quit")))
         self.buttons = [(name, Button((60, 316 + i * 62, 240, 52), label))
                         for i, (name, label) in enumerate(entries)]
         self.lang_button = FlagButton((S.LOGICAL_W - 66, S.LOGICAL_H - 52, 54, 38),
@@ -95,7 +128,7 @@ class MenuScene(Scene):
         if name == "continue":
             self._continue_game()
         elif name == "play":
-            self.app.change_scene(GameScene(self.app))
+            self.app.change_scene(NewGameScene(self.app))
         elif name == "scores":
             self.app.change_scene(ScoresScene(self.app))
         elif name == "assist":
@@ -113,32 +146,21 @@ class MenuScene(Scene):
     def _button_at(self, pos):
         if self.lang_button.hit(pos):
             return "lang", self.lang_button
+        if self.close_button and self.close_button.hit(pos):
+            return "quit", self.close_button
         for name, button in self.buttons:
             if button.hit(pos):
                 return name, button
         return None
 
+    def _on_click(self, name):
+        if name == "lang":
+            self._next_language()
+        else:
+            self._activate(name)
+
     def handle_event(self, event):
-        # Al pulsar el botón se oscurece; la acción se ejecuta al soltar encima de él
-        # (soltar fuera la cancela).
-        pos = tap_position(event, self.app.display)
-        if pos is not None:
-            self.pressed = self._button_at(pos)
-            if self.pressed:
-                self.pressed[1].pressed = True
-            return
-        pos = release_position(event, self.app.display)
-        if pos is not None:
-            pressed, self.pressed = self.pressed, None
-            if pressed is None:
-                return
-            name, button = pressed
-            button.pressed = False
-            if button.hit(pos):
-                if name == "lang":
-                    self._next_language()
-                else:
-                    self._activate(name)
+        if self.handle_pointer(event):
             return
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
@@ -157,12 +179,14 @@ class MenuScene(Scene):
             y = 210 + math.sin(self.t * 1.7 + i * 1.1) * 14
             sprite = orb_sprite(i, 52, assist)
             surf.blit(sprite, sprite.get_rect(center=(x, y)))
-        draw_text(surf, self.title_font, "ORBES", S.ACCENT, center=(S.LOGICAL_W // 2, 120))
+        draw_text(surf, self.title_font, "Rune Quest", S.ACCENT, center=(S.LOGICAL_W // 2, 120))
         draw_text(surf, self.small, t("menu.subtitle"), S.WHITE,
                   center=(S.LOGICAL_W // 2, 290))
         for _, button in self.buttons:
             button.draw(surf, self.font)
         self.lang_button.draw(surf)
+        if self.close_button:
+            self.close_button.draw(surf)
         if self.best:
             draw_text(surf, self.small, t("menu.record", score=self.best), S.WHITE,
                       center=(S.LOGICAL_W // 2, S.LOGICAL_H - 40))
@@ -170,6 +194,70 @@ class MenuScene(Scene):
         if gc.authenticated:
             draw_text(surf, self.small, t("menu.gc_player", name=gc.player_name), S.ACCENT,
                       center=(S.LOGICAL_W // 2, S.LOGICAL_H - 70))
+
+
+# --------------------------------------------------------------------------- nueva partida
+class NewGameScene(ButtonScene):
+    """Segunda pantalla al pulsar "Jugar": empezar partida y elegir el modo de juego."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.title = pygame.font.Font(None, 56)
+        self.font = pygame.font.Font(None, 36)
+        self.small = pygame.font.Font(None, 22)
+        saved = app.db.get_setting("game_mode", S.GAME_MODES[0])
+        self.mode = saved if saved in S.GAME_MODES else S.GAME_MODES[0]
+        self._build_buttons()
+
+    def _build_buttons(self):
+        self.start_button = Button((60, 300, 240, 56), t("play.start"))
+        self.mode_button = ModeButton((60, 372, 240, 84), t("play.mode"),
+                                      t(f"mode.{self.mode}"), S.GAME_MODES.index(self.mode),
+                                      len(S.GAME_MODES), self.small)
+        self.back_button = Button((60, 540, 240, 52), t("play.back"))
+
+    def _next_mode(self):
+        i = S.GAME_MODES.index(self.mode)
+        self.mode = S.GAME_MODES[(i + 1) % len(S.GAME_MODES)]
+        log.info("Modo de juego seleccionado: %s", self.mode)
+        try:
+            self.app.db.set_setting("game_mode", self.mode)
+        except sqlite3.Error:
+            log.error("No se pudo guardar el modo de juego; solo se aplica a esta sesión")
+        self._build_buttons()
+
+    def _button_at(self, pos):
+        for name, button in (("start", self.start_button), ("mode", self.mode_button),
+                             ("back", self.back_button)):
+            if button.hit(pos):
+                return name, button
+        return None
+
+    def _on_click(self, name):
+        if name == "start":
+            self.app.change_scene(GameScene(self.app, mode=self.mode))
+        elif name == "mode":
+            self._next_mode()
+        elif name == "back":
+            self.app.change_scene(MenuScene(self.app))
+
+    def handle_event(self, event):
+        if self.handle_pointer(event):
+            return
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                self._on_click("start")
+            elif event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_TAB):
+                self._next_mode()
+            elif event.key == pygame.K_ESCAPE:
+                self._on_click("back")
+
+    def draw(self, surf):
+        surf.fill(S.BG)
+        draw_text(surf, self.title, t("play.title"), S.ACCENT, center=(S.LOGICAL_W // 2, 200))
+        self.start_button.draw(surf, self.font)
+        self.mode_button.draw(surf, self.font)
+        self.back_button.draw(surf, self.font)
 
 
 # --------------------------------------------------------------------------- puntuaciones
@@ -221,10 +309,10 @@ class ScoresScene(Scene):
 
 # --------------------------------------------------------------------------- partida
 class GameScene(Scene):
-    def __init__(self, app, seed=None, game=None):
-        """Partida nueva, o la ``game`` restaurada de la base de datos."""
+    def __init__(self, app, seed=None, game=None, mode=S.GAME_MODES[0]):
+        """Partida nueva en el modo ``mode``, o la ``game`` restaurada de la base de datos."""
         super().__init__(app)
-        self.game = game or Game(seed=seed)
+        self.game = game or Game(seed=seed, mode=mode)
         self.assist = app.db.get_setting("color_assist", "0") == "1"
         self.best = app.db.best_score()
         self.hud = pygame.font.Font(None, 28)

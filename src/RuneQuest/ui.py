@@ -36,6 +36,52 @@ class Button:
         draw_text(surf, font, self.label, S.WHITE, center=(cx, cy + (1 if self.pressed else 0)))
 
 
+class CloseButton:
+    """Botón cuadrado con una X (salir)."""
+
+    def __init__(self, rect):
+        self.rect = pygame.Rect(rect)
+        self.pressed = False
+
+    def hit(self, pos) -> bool:
+        return self.rect.collidepoint(pos)
+
+    def draw(self, surf):
+        pygame.draw.rect(surf, S.BUTTON_PRESSED if self.pressed else S.BUTTON, self.rect,
+                         border_radius=8)
+        pygame.draw.rect(surf, S.BUTTON_EDGE, self.rect, width=2, border_radius=8)
+        k = self.rect.width // 4
+        cx, cy = self.rect.center
+        cy += 1 if self.pressed else 0
+        pygame.draw.line(surf, S.WHITE, (cx - k, cy - k), (cx + k, cy + k), 4)
+        pygame.draw.line(surf, S.WHITE, (cx - k, cy + k), (cx + k, cy - k), 4)
+
+
+class ModeButton(Button):
+    """Selector: subtítulo pequeño arriba, opción actual en grande y un punto por opción."""
+
+    def __init__(self, rect, subtitle, label, index, count, small_font):
+        super().__init__(rect, label)
+        self.subtitle = subtitle
+        self.index = index
+        self.count = count
+        self.small_font = small_font
+
+    def draw(self, surf, font):
+        fill = S.BUTTON_PRESSED if self.pressed else S.BUTTON
+        pygame.draw.rect(surf, fill, self.rect, border_radius=14)
+        pygame.draw.rect(surf, S.BUTTON_EDGE, self.rect, width=2, border_radius=14)
+        dy = 1 if self.pressed else 0
+        cx = self.rect.centerx
+        draw_text(surf, self.small_font, self.subtitle, S.ACCENT,
+                  center=(cx, self.rect.top + 16 + dy))
+        draw_text(surf, font, self.label, S.WHITE, center=(cx, self.rect.centery + 4 + dy))
+        for i in range(self.count):
+            x = cx + (i - (self.count - 1) / 2) * 16
+            pygame.draw.circle(surf, S.ACCENT if i == self.index else S.BUTTON_EDGE,
+                               (round(x), self.rect.bottom - 12 + dy), 4 if i == self.index else 3)
+
+
 class FlagButton:
     """Botón con la bandera del idioma activo."""
 

@@ -145,6 +145,27 @@ Para que funcione de verdad hace falta (una vez):
 Con `briefcase dev` GameKit responde que "Game Center no reconoce esta aplicación" (código 15):
 es lo esperado sin los pasos anteriores.
 
+**App Store Connect** es la web de Apple para gestionar las apps que publicas en el App Store. Desde ahí:
+
+Das de alta la app (nombre, bundle ID, ficha de la tienda, capturas, precio).
+Configuras Game Center: activarlo para la app, crear clasificaciones (como runequest_highscores) y logros.
+Subes versiones y las distribuyes a testers con TestFlight.
+Envías la app a revisión de Apple y la publicas.
+Consultas ventas, descargas, informes de fallos y valoraciones.
+
+Cómo se entra:
+
+Ve a https://appstoreconnect.apple.com e inicia sesión con tu Apple ID.
+Para poder usarla necesitas estar en el Apple Developer Program, que es de pago (99 USD/año, o el equivalente en euros). Te inscribes en https://developer.apple.com/programs/ con el mismo Apple ID. Como particular, la aprobación suele tardar entre unas horas y un par de días.
+Una vez aprobado, al entrar verás el panel con secciones como Apps, TestFlight y Usuarios y acceso. También existe la app App Store Connect para iPhone, útil para consultar cosas, aunque la configuración se hace mejor en la web.
+
+Relación con lo que hemos hecho:
+
+El App ID (com.SkullWithGasMask.RuneQuest) con la capacidad Game Center se crea en otra web, https://developer.apple.com/account, en Certificates, Identifiers & Profiles.
+Después, en App Store Connect: Apps → + → Nueva app, eliges ese bundle ID y, dentro de la app, en la sección Game Center, creas la clasificación y los logros.
+
+Sin la membresía de pago puedes ejecutar la app en tu iPhone con un Apple ID gratuito desde Xcode (con limitaciones). Pero no puedes usar Game Center ni App Store Connect, porque Game Center requiere que la app esté dada de alta ahí.
+
 ## Qué falta (hoja de ruta)
 
 - Sonido y música; vibración al reventar en iOS.

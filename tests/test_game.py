@@ -115,6 +115,7 @@ def test_state_round_trip_restores_the_exact_board():
     assert (h.score, h.level, h.taps, h.rains, h.best_chain) == \
         (g.score, g.level, g.taps, g.rains, g.best_chain)
     assert h.board.n_colors == level_params(g.level)["colors"]
+    assert Game.from_state(Game(seed=1, mode="surprise").to_state()).mode == "surprise"
 
 
 def test_invalid_state_is_rejected():

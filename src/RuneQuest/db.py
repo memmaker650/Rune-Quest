@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS EstadoPartida (
 PRAGMA user_version = 2;
 """
 
+# Modo de juego de la partida guardada ("classic", "fast" o "surprise").
+SCHEMA_V3 = """
+ALTER TABLE EstadoPartida ADD COLUMN modo TEXT NOT NULL DEFAULT 'classic';
+PRAGMA user_version = 3;
+"""
+
 
 DB_NAME = "RuneQuest_database.db"
 LEGACY_DB_NAME = "orbes.db"
@@ -110,7 +116,11 @@ class Database:
             log.info("Migrando esquema de la base de datos: v%d -> v2 (EstadoPartida)",
                      max(version, 1))
             self.conn.executescript(SCHEMA_V2)
-        # Futuras migraciones: if version < 3: ...
+        if version < 3:
+            log.info("Migrando esquema de la base de datos: v%d -> v3 (modo de juego)",
+                     max(version, 2))
+            self.conn.executescript(SCHEMA_V3)
+        # Futuras migraciones: if version < 4: ...
 
     def close(self):
         try:
@@ -168,11 +178,11 @@ class Database:
             with self.conn:
                 self.conn.execute(
                     "INSERT OR REPLACE INTO EstadoPartida (id, puntuacion, nivel, toques, "
-                    "lluvias, mejor_cadena, filas, columnas, bolas, actualizado) "
-                    "VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+                    "lluvias, mejor_cadena, modo, filas, columnas, bolas, actualizado) "
+                    "VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
                     (state["score"], state["level"], state["taps"], state["rains"],
-                     state["best_chain"], state["rows"], state["cols"],
-                     json.dumps(state["balls"])),
+                     state["best_chain"], state.get("mode", "classic"), state["rows"],
+                     state["cols"], json.dumps(state["balls"])),
                 )
         except sqlite3.Error:
             log.exception("No se pudo guardar la partida en curso")
@@ -193,7 +203,7 @@ class Database:
             return None
         return {
             "score": row["puntuacion"], "level": row["nivel"], "taps": row["toques"],
-            "rains": row["lluvias"], "best_chain": row["mejor_cadena"],
+            "rains": row["lluvias"], "best_chain": row["mejor_cadena"], "mode": row["modo"],
             "rows": row["filas"], "cols": row["columnas"], "balls": balls,
         }
 

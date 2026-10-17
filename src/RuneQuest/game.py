@@ -39,7 +39,11 @@ class Event:
 
 
 class Game:
-    def __init__(self, seed=None, level: int = 1):
+    def __init__(self, seed=None, level: int = 1, mode: str = S.GAME_MODES[0]):
+        if mode not in S.GAME_MODES:
+            log.warning("Modo de juego desconocido %r; se usa %r", mode, S.GAME_MODES[0])
+            mode = S.GAME_MODES[0]
+        self.mode = mode
         self.rng = random.Random(seed)
         self.score = 0
         self.level = level
@@ -49,7 +53,7 @@ class Game:
         self.best_chain = 0
         self.events: list[Event] = []
         p = level_params(level)
-        log.info("Nueva partida en el nivel %d: %s", level, p)
+        log.info("Nueva partida (modo %s) en el nivel %d: %s", mode, level, p)
         self.board = Board(n_colors=p["colors"], rng=self.rng)
         self.board.fill()
 
@@ -59,7 +63,7 @@ class Game:
         b = self.board
         return {
             "score": self.score, "level": self.level, "taps": self.taps, "rains": self.rains,
-            "best_chain": self.best_chain, "rows": b.rows, "cols": b.cols,
+            "best_chain": self.best_chain, "mode": self.mode, "rows": b.rows, "cols": b.cols,
             "balls": [[r, c, b.grid[r][c]] for r in range(b.rows) for c in range(b.cols)
                       if b.grid[r][c] != EMPTY],
         }
@@ -67,7 +71,7 @@ class Game:
     @classmethod
     def from_state(cls, state: dict, seed=None) -> "Game":
         """Reconstruye una partida guardada con ``to_state``. ValueError si no es válida."""
-        g = cls(seed=seed, level=int(state["level"]))
+        g = cls(seed=seed, level=int(state["level"]), mode=state.get("mode", S.GAME_MODES[0]))
         if (state["rows"], state["cols"]) != (g.board.rows, g.board.cols):
             raise ValueError(f"tablero guardado de {state['rows']}x{state['cols']}, "
                              f"se esperaba {g.board.rows}x{g.board.cols}")
