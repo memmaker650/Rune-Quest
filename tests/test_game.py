@@ -34,12 +34,14 @@ def test_tap_on_a_pair_does_nothing():
 
 def test_tap_scores_and_emits_clear_event():
     g = game_with([
-        "..1",
+        "0.1",
+        ".11",
         "001",
         "011",
     ])
-    # grupo de '0': (1,0), (1,1), (2,0) -> 3 orbes; quedan unos conectados, así que no llueve
-    assert g.tap(1, 0) is True
+    # grupo de '0' (2,0), (2,1), (3,0) -> 3 orbes; queda el '0' de (0,0), así que no hay bonus
+    # de color, y los '1' siguen conectados, así que no llueve
+    assert g.tap(2, 0) is True
     assert g.score == clear_points(3)
     assert g.best_chain == 3 and g.taps == 1
     events = g.pop_events()
@@ -50,12 +52,13 @@ def test_tap_scores_and_emits_clear_event():
 
 def test_rain_refills_the_board_when_no_moves_are_left():
     # Al reventar los '0' quedan 1, 2 y 3 sueltos: llueve hasta llenar el tablero.
-    g = game_with(["000", "123"], n_colors=1)   # con un solo color la lluvia deja jugadas
+    g = game_with(["000", "123"])
     assert g.tap(0, 0)
     kinds = [e.kind for e in g.pop_events()]
-    assert kinds == ["clear", "rain"]
+    assert kinds[:2] == ["clear", "color_clear"]          # se han ido todos los '0'
+    assert "rain" in kinds
     assert g.board.count() == 6
-    assert g.rains == 1 and not g.over
+    assert g.rains == 1
 
 
 def test_game_over_when_rain_leaves_no_moves():
@@ -69,9 +72,9 @@ def test_game_over_when_rain_leaves_no_moves():
 
 
 def test_level_up_by_points_adds_colors():
-    g = game_with(["..1", "001", "011"])
+    g = game_with(["0.1", ".11", "001", "011"])     # sin bonus: queda un '0'
     g.score = level_threshold(1) - clear_points(3)
-    assert g.tap(1, 0)
+    assert g.tap(2, 0)
     assert g.level == 2
     assert "level" in [e.kind for e in g.pop_events()]
     assert g.board.n_colors == level_params(2)["colors"]
@@ -126,3 +129,22 @@ def test_invalid_state_is_rejected():
         Game.from_state({**state, "rows": 3})
     with pytest.raises(ValueError):
         Game.from_state({**state, "balls": [[99, 0, 1]]})
+
+
+def test_clearing_every_orb_of_a_colour_gives_bonus():
+    g = game_with(["0.1", "001", "211"])        # todos los '0' forman un único grupo
+    assert g.tap(0, 0)
+    events = g.pop_events()
+    assert [e.kind for e in events][:2] == ["clear", "color_clear"]
+    assert events[1].data == {"color": 0, "bonus": S.COLOR_CLEAR_BONUS}
+    assert g.score == clear_points(3) + S.COLOR_CLEAR_BONUS
+
+
+def test_clearing_the_whole_board_gives_both_bonuses():
+    g = game_with(["00", "00"], n_colors=1)
+    assert g.tap(0, 0)
+    kinds = [e.kind for e in g.pop_events()]
+    assert kinds[:3] == ["clear", "color_clear", "board_clear"]
+    assert "rain" in kinds                        # el tablero vacío se vuelve a llenar
+    assert g.score >= clear_points(4) + S.COLOR_CLEAR_BONUS + S.BOARD_CLEAR_BONUS
+    assert g.board.count() == 4

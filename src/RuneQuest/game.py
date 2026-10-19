@@ -33,7 +33,8 @@ def clear_points(n: int) -> int:
 
 @dataclass
 class Event:
-    """Aviso para la capa visual: 'clear', 'rain', 'level' u 'over'."""
+    """Aviso para la capa visual: 'clear', 'color_clear', 'board_clear', 'rain', 'level'
+    u 'over'."""
     kind: str
     data: dict = field(default_factory=dict)
 
@@ -120,12 +121,26 @@ class Game:
             "cells": result.cells, "color": result.color, "points": points,
             "moves": result.moves,
         }))
+        self._check_clear_bonuses(result.color)
 
         while self.score >= self.next_level_at:
             self._level_up()
         if not self.board.has_moves():
             self._rain()
         return True
+
+    def _check_clear_bonuses(self, color: int) -> None:
+        """Bonus por eliminar todos los orbes de ``color`` y por dejar el tablero vacío
+        (el último grupo de una pantalla limpia gana los dos)."""
+        if not any(v == color for row in self.board.grid for v in row):
+            self.score += S.COLOR_CLEAR_BONUS
+            log.info("Color %d eliminado del tablero: +%d", color, S.COLOR_CLEAR_BONUS)
+            self.events.append(Event("color_clear", {"color": color,
+                                                     "bonus": S.COLOR_CLEAR_BONUS}))
+        if self.board.is_empty():
+            self.score += S.BOARD_CLEAR_BONUS
+            log.info("¡Tablero limpio!: +%d", S.BOARD_CLEAR_BONUS)
+            self.events.append(Event("board_clear", {"bonus": S.BOARD_CLEAR_BONUS}))
 
     def _rain(self) -> None:
         self.rains += 1

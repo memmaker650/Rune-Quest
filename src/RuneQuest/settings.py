@@ -20,6 +20,8 @@ BOARD_H = ROWS * CELL            # 630
 LOGICAL_W = BOARD_W
 LOGICAL_H = 760
 FPS = 60
+ANIM_RATE = 12.0                 # velocidad con que los orbes llegan a su sitio (mayor = más rápido)
+RAIN_ANIM_RATE = 6.0             # la lluvia de orbes cae a la mitad de velocidad
 
 # --- Modos de juego (de momento todos usan las mismas reglas) ---
 GAME_MODES = ("classic", "fast", "surprise")
@@ -30,6 +32,8 @@ ASSIST_MODES = ("none", "geo", "runes")
 # --- Reglas ---
 MIN_GROUP = 3                    # orbes conectados mínimos para poder reventar
 POINTS_PER_PAIR = 10             # puntos = n * (n - 1) * POINTS_PER_PAIR
+COLOR_CLEAR_BONUS = 5000         # eliminar todos los orbes de un color
+BOARD_CLEAR_BONUS = 10000        # dejar el tablero sin ningún orbe
 LEVEL_POINTS = 1000              # nivel n -> n+1 al llegar a LEVEL_POINTS * n*(n+1)/2 puntos
 
 # --- Dificultad (ver game.level_params) ---

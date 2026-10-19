@@ -21,6 +21,11 @@ log = logging.getLogger(__name__)
 IS_IOS = sys.platform == "ios"
 
 
+def format_points(n: int) -> str:
+    """5000 -> "5.000" (es), "5,000" (en), "5 000" (fr): separador de miles del idioma."""
+    return f"{n:,}".replace(",", t("format.thousands"))
+
+
 def assist_mode(db) -> str:
     """Ayuda visual elegida ("none", "geo" o "runes"). Hereda el ajuste antiguo "color_assist"
     (sí/no) de versiones anteriores, que equivale a "geo"."""
@@ -351,10 +356,11 @@ class GameScene(Scene):
         self.hud = pygame.font.Font(None, 28)
         self.small = pygame.font.Font(None, 22)
         self.big = pygame.font.Font(None, 56)
-        self.offsets: dict = {}      # (fila, col) -> [dx, dy] en píxeles; decae a 0 (animación)
+        self.bonus_font = pygame.font.Font(None, 46)
+        self.offsets: dict = {}      # (fila, col) -> [dx, dy, velocidad]; dx, dy decaen a 0
         self.particles: list = []    # [x, y, vx, vy, vida, color]
         self.floaters: list = []     # [texto, x, y, vida]
-        self.banner = None           # [texto, vida]
+        self.banners: list = []      # avisos en cola; se muestra el primero (ver _queue_banner)
         self.hover = None
         self.saved = False
         self.over_t = 0.0
@@ -395,16 +401,25 @@ class GameScene(Scene):
     def _cell_center(self, r, c):
         return (S.BOARD_X + c * S.CELL + S.CELL / 2, S.BOARD_Y + r * S.CELL + S.CELL / 2)
 
-    def _apply_moves(self, moves, cleared=()):
+    def _apply_moves(self, moves, cleared=(), rate=S.ANIM_RATE):
         old = self.offsets
         moved_src = {src for src, _ in moves}
         moved_dst = {dst for _, dst in moves}
         new = {cell: off for cell, off in old.items()
                if cell not in moved_src and cell not in moved_dst and cell not in cleared}
         for (sr, sc), (dr, dc) in moves:
-            ox, oy = old.get((sr, sc), (0.0, 0.0))
-            new[(dr, dc)] = [ox + (sc - dc) * S.CELL, oy + (sr - dr) * S.CELL]
+            ox, oy = old.get((sr, sc), (0.0, 0.0))[:2]
+            new[(dr, dc)] = [ox + (sc - dc) * S.CELL, oy + (sr - dr) * S.CELL, rate]
         self.offsets = new
+
+    def _queue_banner(self, lines, life):
+        """Encola un aviso: ``lines`` = [(texto, fuente, color), ...] durante ``life`` segundos."""
+        self.banners.append([lines, life])
+
+    def _bonus_banner(self, title, color, bonus):
+        lines = [(part, self.bonus_font, color) for part in title.split("|")]
+        lines.append((t("bonus.points", points=format_points(bonus)), self.hud, S.WHITE))
+        self._queue_banner(lines, 2.2)
 
     def _consume_events(self):
         for ev in self.game.pop_events():
@@ -424,12 +439,18 @@ class GameScene(Scene):
                 self.floaters.append([f"+{d['points']}", mx, my, 0.9])
                 self._apply_moves(d["moves"], cleared=set(d["cells"]))
                 self.best = max(self.best, self.game.score)
+            elif ev.kind == "color_clear":
+                name = t(f"color.{d['color'] % len(S.PALETTE)}")
+                self._bonus_banner(t("bonus.color", color=name),
+                                   S.PALETTE[d["color"] % len(S.PALETTE)], d["bonus"])
+            elif ev.kind == "board_clear":
+                self._bonus_banner(t("bonus.board"), S.ACCENT, d["bonus"])
             elif ev.kind == "rain":
-                self._apply_moves(d["moves"])
-                if self.banner is None:  # el aviso de nivel tiene prioridad
-                    self.banner = [t("game.rain"), 1.2]
+                self._apply_moves(d["moves"], rate=S.RAIN_ANIM_RATE)
+                self._queue_banner([(t("game.rain"), self.big, S.ACCENT)], 1.2)
             elif ev.kind == "level":
-                self.banner = [t("game.level_banner", level=d["level"]), 1.6]
+                self._queue_banner([(t("game.level_banner", level=d["level"]), self.big,
+                                     S.ACCENT)], 1.6)
             elif ev.kind == "over":
                 self._save_score()
                 self._save_progress()      # borra la partida guardada
@@ -467,9 +488,9 @@ class GameScene(Scene):
         self._consume_events()     # por si el juego generó eventos fuera de un toque
         if self.game.over:
             self.over_t += dt
-        k = math.exp(-dt * 12.0)
         for cell in list(self.offsets):
             off = self.offsets[cell]
+            k = math.exp(-dt * (off[2] if len(off) > 2 else S.ANIM_RATE))
             off[0] *= k
             off[1] *= k
             if abs(off[0]) < 0.5 and abs(off[1]) < 0.5:
@@ -484,10 +505,10 @@ class GameScene(Scene):
             f[2] -= 40 * dt
             f[3] -= dt
         self.floaters = [f for f in self.floaters if f[3] > 0]
-        if self.banner:
-            self.banner[1] -= dt
-            if self.banner[1] <= 0:
-                self.banner = None
+        if self.banners:
+            self.banners[0][1] -= dt
+            if self.banners[0][1] <= 0:
+                self.banners.pop(0)
 
     # --- dibujo ---
     def draw(self, surf):
@@ -503,7 +524,7 @@ class GameScene(Scene):
                 if v < 0:
                     continue
                 cx, cy = self._cell_center(r, c)
-                ox, oy = self.offsets.get((r, c), (0.0, 0.0))
+                ox, oy = self.offsets.get((r, c), (0.0, 0.0))[:2]
                 sprite = orb_sprite(v, S.CELL, self.assist)
                 surf.blit(sprite, sprite.get_rect(center=(round(cx + ox), round(cy + oy))))
 
@@ -526,11 +547,25 @@ class GameScene(Scene):
             draw_text(surf, self.hud, text, S.WHITE, center=(round(x), round(y)))
 
         self._draw_hud(surf, hover_info)
-        if self.banner:
-            draw_text(surf, self.big, self.banner[0], S.ACCENT,
-                      center=(S.LOGICAL_W // 2, S.BOARD_Y + S.BOARD_H // 2))
+        if self.banners:
+            self._draw_banner(surf, self.banners[0][0])
         if g.over:
             self._draw_over(surf)
+
+    def _draw_banner(self, surf, lines):
+        """Aviso centrado sobre el tablero, con un panel translúcido para que se lea bien."""
+        heights = [font.get_linesize() for _, font, _ in lines]
+        width = max(font.size(text)[0] for text, font, _ in lines) + 40
+        panel = pygame.Rect(0, 0, min(S.LOGICAL_W - 16, width), sum(heights) + 28)
+        panel.center = (S.LOGICAL_W // 2, S.BOARD_Y + S.BOARD_H // 2)
+        shade = pygame.Surface(panel.size, pygame.SRCALPHA)
+        pygame.draw.rect(shade, (10, 12, 28, 215), shade.get_rect(), border_radius=16)
+        pygame.draw.rect(shade, (*S.BUTTON_EDGE, 200), shade.get_rect(), width=2, border_radius=16)
+        surf.blit(shade, panel)
+        y = panel.top + 14
+        for (text, font, color), h in zip(lines, heights):
+            draw_text(surf, font, text, color, center=(S.LOGICAL_W // 2, y + h // 2))
+            y += h
 
     def _draw_hud(self, surf, hover_info):
         g = self.game
