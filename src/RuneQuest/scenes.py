@@ -15,7 +15,8 @@ from .board import neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
-from .ui import Button, CloseButton, FlagButton, ModeButton, draw_text, draw_text_outlined
+from .ui import (Button, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
+                 draw_text_outlined)
 
 log = logging.getLogger(__name__)
 
@@ -383,6 +384,13 @@ class GameScene(Scene):
         self.big = pygame.font.Font(None, 56)
         self.bonus_font = pygame.font.Font(None, 46)
         self.score_font = pygame.font.Font(None, 52)     # puntuación final
+        # Tercera línea del marcador: iconos de efectos (FX) y música, a la derecha.
+        audio = app.audio
+        music_x = S.LOGICAL_W - 12 - 32
+        self.music_button = SoundToggle((music_x, 63, 32, 26), "music", audio.music_enabled,
+                                        self.small)
+        self.fx_button = SoundToggle((music_x - 8 - 32, 63, 32, 26), "fx", audio.fx_enabled,
+                                     self.small)
         self.offsets: dict = {}      # (fila, col) -> [dx, dy, velocidad]; dx, dy decaen a 0
         self.particles: list = []    # [x, y, vx, vy, vida, color]
         self.floaters: list = []     # [texto, x, y, vida]
@@ -414,15 +422,34 @@ class GameScene(Scene):
         confirm_key = (event.type == pygame.KEYDOWN
                        and event.key in (pygame.K_RETURN, pygame.K_SPACE))
         if self.game.over:
+            if pos is not None and self._toggle_sound(pos):
+                return
             if (pos is not None or confirm_key) and self.over_t > 0.6:
                 self.app.change_scene(MenuScene(self.app))
             return
         if pos is not None:
+            if self._toggle_sound(pos):
+                return
             cell = self._cell_at(pos)
             if cell is not None:
                 if self.game.tap(*cell):
+                    self.app.audio.play_pop()
                     self._consume_events()
                     self._save_progress()
+
+    def _toggle_sound(self, pos) -> bool:
+        """Toque sobre el icono FX o el de música: lo cambia y lo guarda. True si era uno de ellos."""
+        for button, key, setter in ((self.fx_button, "sfx", self.app.audio.set_fx),
+                                    (self.music_button, "music", self.app.audio.set_music)):
+            if button.hit(pos):
+                button.on = not button.on
+                setter(button.on)
+                try:
+                    self.app.db.set_setting(key, "1" if button.on else "0")
+                except sqlite3.Error:
+                    log.error("No se pudo guardar el ajuste de sonido %s", key)
+                return True
+        return False
 
     # --- eventos del juego -> efectos visuales ---
     def _cell_center(self, r, c):
@@ -679,17 +706,20 @@ class GameScene(Scene):
         draw_text(surf, self.hud, t("game.points", score=g.score), S.WHITE, topleft=(12, 12))
         draw_text(surf, self.hud, t("game.level", level=g.level), S.WHITE,
                   topright=(S.LOGICAL_W - 12, 12))
+        # 2ª línea: récord y siguiente nivel
         draw_text(surf, self.small, t("game.record", score=self.best), S.BUTTON_EDGE,
                   topleft=(12, 44))
+        draw_text(surf, self.small, t("game.next_level", score=g.next_level_at), S.BUTTON_EDGE,
+                  topright=(S.LOGICAL_W - 12, 44))
+        # 3ª línea: mejor cadena, grupo bajo el ratón (escritorio) e iconos de sonido
+        draw_text(surf, self.small, t("game.best_chain", count=g.best_chain), S.WHITE,
+                  topleft=(12, 70))
         if hover_info:
             n, pts = hover_info
             draw_text(surf, self.small, t("game.hover", count=n, points=pts), S.ACCENT,
-                      topright=(S.LOGICAL_W - 12, 44))
-        # Mejor cadena
-        draw_text(surf, self.small, t("game.best_chain", count=g.best_chain), S.WHITE,
-                  topleft=(12, 70))
-        draw_text(surf, self.small, t("game.next_level", score=g.next_level_at), S.BUTTON_EDGE,
-                  topright=(S.LOGICAL_W - 12, 70))
+                      topright=(self.fx_button.rect.left - 10, 70))
+        self.fx_button.draw(surf)
+        self.music_button.draw(surf)
 
     def _draw_over(self, surf):
         g = self.game

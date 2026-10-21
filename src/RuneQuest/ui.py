@@ -94,6 +94,45 @@ class ModeButton(Button):
                                (round(x), self.rect.bottom - 12 + dy), 4 if i == self.index else 3)
 
 
+class SoundToggle:
+    """Icono pequeño de activar/desactivar: "fx" (efectos) o "music" (dos corcheas unidas).
+    Desactivado se ve apagado y tachado."""
+
+    def __init__(self, rect, kind, on, font):
+        self.rect = pygame.Rect(rect)
+        self.kind = kind
+        self.on = on
+        self.font = font
+
+    def hit(self, pos) -> bool:
+        return self.rect.collidepoint(pos)
+
+    def draw(self, surf):
+        ink = S.WHITE if self.on else S.BUTTON_EDGE
+        pygame.draw.rect(surf, S.BUTTON, self.rect, border_radius=6)
+        pygame.draw.rect(surf, S.BUTTON_EDGE, self.rect, width=1, border_radius=6)
+        cx, cy = self.rect.center
+        if self.kind == "fx":
+            draw_text(surf, self.font, "FX", ink, center=(cx, cy + 1))
+        else:
+            self._draw_notes(surf, ink, cx, cy)
+        if not self.on:
+            r = self.rect.inflate(-6, -6)
+            pygame.draw.line(surf, S.DANGER, r.bottomleft, r.topright, 2)
+
+    @staticmethod
+    def _draw_notes(surf, ink, cx, cy):
+        """Dos corcheas unidas por una barra (♫)."""
+        heads = [(cx - 5, cy + 6), (cx + 5, cy + 4)]
+        for hx, hy in heads:
+            pygame.draw.ellipse(surf, ink, (hx - 4, hy - 3, 8, 6))
+        stems = [(cx - 2, cy + 6), (cx + 8, cy + 4)]
+        for (sx, sy) in stems:
+            pygame.draw.line(surf, ink, (sx, sy), (sx, sy - 12), 2)
+        pygame.draw.polygon(surf, ink, [(cx - 2, cy - 6), (cx + 8, cy - 8),
+                                        (cx + 8, cy - 5), (cx - 2, cy - 3)])
+
+
 class FlagButton:
     """Botón con la bandera del idioma activo."""
 

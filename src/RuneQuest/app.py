@@ -8,6 +8,7 @@ import sys
 import pygame
 
 from . import __version__, gamecenter, translations
+from .audio import Audio
 from . import settings as S
 from .db import Database, default_db_path
 from .display import Display
@@ -29,6 +30,9 @@ class App:
         self.db = Database(db_path or default_db_path())
         translations.load()
         translations.set_language(self.db.get_setting("language", translations.current().code))
+        self.audio = Audio(fx_enabled=self.db.get_setting("sfx", "1") == "1",
+                           music_enabled=self.db.get_setting("music", "1") == "1")
+        self.audio.start_music()
         self.gamecenter = gamecenter.create()
         self.gamecenter.on_authenticated = self._on_gamecenter_login
         self.gamecenter.authenticate()
