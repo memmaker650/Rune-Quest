@@ -5,6 +5,7 @@ import logging
 import pygame
 
 from . import settings as S
+from .runes import draw_rune, rune_for_color
 
 log = logging.getLogger(__name__)
 
@@ -33,8 +34,12 @@ def _glyph(surf, color_idx, c, r, ink):
         pygame.draw.circle(surf, ink, (c, c), k, 3)
 
 
-def orb_sprite(color_idx: int, size: int = S.CELL, assist: bool = False):
-    """Superficie con transparencia de un orbe. Se dibuja una vez y se reutiliza."""
+def orb_sprite(color_idx: int, size: int = S.CELL, assist: str = "none"):
+    """Superficie con transparencia de un orbe. Se dibuja una vez y se reutiliza.
+
+    ``assist`` (ver ``settings.ASSIST_MODES``) añade una marca que distingue el color sin
+    depender de él: "geo" = forma geométrica, "runes" = runa nórdica.
+    """
     key = (color_idx, size, assist)
     sprite = _cache.get(key)
     if sprite is not None:
@@ -49,7 +54,12 @@ def orb_sprite(color_idx: int, size: int = S.CELL, assist: bool = False):
     pygame.draw.circle(sprite, _shade(base, 0.55), (c, c), r + 1)
     pygame.draw.circle(sprite, base, (c, c), r - 1)
     pygame.draw.circle(sprite, _shade(base, 1.0 + 0.45), (c - r // 3, c - r // 3), max(2, r // 4))
-    if assist:
+    if assist == "geo":
         _glyph(sprite, color_idx % len(S.PALETTE), c, r, _shade(base, 0.45))
+    elif assist == "runes":
+        draw_rune(sprite, rune_for_color(color_idx % len(S.PALETTE)), (c, c), r * 0.52,
+                  _shade(base, 0.4), max(2, size // 15))
+    elif assist != "none":
+        log.warning("Modo de ayuda desconocido %r; se dibuja sin ayuda", assist)
     _cache[key] = sprite
     return sprite

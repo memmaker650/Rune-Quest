@@ -22,6 +22,16 @@ def tap_position(event, display):
     return None
 
 
+def release_position(event, display):
+    """Posición lógica si el evento es levantar el dedo o soltar el clic; si no, None."""
+    if event.type == pygame.FINGERUP:
+        return display.event_pos(event)
+    if (event.type == pygame.MOUSEBUTTONUP and event.button == 1
+            and not _synthetic_mouse(event)):
+        return display.event_pos(event)
+    return None
+
+
 def is_confirm(event, display) -> bool:
     if tap_position(event, display) is not None:
         return True

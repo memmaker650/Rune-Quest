@@ -1,8 +1,9 @@
 """Tablero de orbes. Lógica pura: no importa pygame, se prueba sin ventana.
 
 El tablero es una rejilla ``grid[fila][columna]`` (fila 0 = arriba). Cada celda guarda el índice
-de color del orbe o ``EMPTY``. Los orbes siempre forman pilas apoyadas en el fondo y las columnas
-vacías se compactan hacia la izquierda.
+de color del orbe o ``EMPTY``. Los orbes siempre forman pilas apoyadas en el fondo; solo caen
+en vertical, nunca cambian de columna (una columna vacía se queda vacía). Empieza lleno y, cuando ya no hay jugadas, ``rain``
+vuelve a llenar los huecos con orbes que caen desde arriba.
 """
 
 from __future__ import annotations
@@ -16,8 +17,18 @@ from . import settings as S
 log = logging.getLogger(__name__)
 
 EMPTY = -1
+# Vecinos de una celda: ortogonales y diagonales.
+
+
+def neighbours(r: int, c: int) -> list:
+    """Vecinos de (r, c) en la rejilla escalonada: las columnas impares están desplazadas media
+    celda hacia abajo, así que cada orbe toca 6 orbes: arriba, abajo y dos en cada columna de al
+    lado (en una columna par, la fila de arriba y la misma; en una impar, la misma y la de abajo).
+    """
+    side_rows = (r - 1, r) if c % 2 == 0 else (r, r + 1)
+    return [(r - 1, c), (r + 1, c)] + [(sr, c + dc) for dc in (-1, 1) for sr in side_rows]
 Cell = tuple[int, int]            # (fila, columna)
-Move = tuple[Cell, Cell]          # (origen, destino); una fila == ROWS está bajo el tablero
+Move = tuple[Cell, Cell]          # (origen, destino); una fila < 0 está sobre el tablero
 
 
 @dataclass
@@ -34,7 +45,6 @@ class Board:
         self.n_colors = n_colors
         self.rng = rng or random.Random()
         self.grid = [[EMPTY] * cols for _ in range(rows)]
-        self.next_row = self._random_row()
 
     # --- construcción ---
     @classmethod
@@ -52,23 +62,19 @@ class Board:
     def to_text(self) -> list[str]:
         return ["".join("." if v == EMPTY else str(v) for v in row) for row in self.grid]
 
-    def _random_row(self) -> list[int]:
-        return [self.rng.randrange(self.n_colors) for _ in range(self.cols)]
+    def _random_color(self) -> int:
+        return self.rng.randrange(self.n_colors)
 
-    def fill(self, n_rows: int) -> None:
-        """Rellena las ``n_rows`` filas inferiores al azar, asegurando que haya jugadas."""
-        if n_rows > self.rows - 1:
-            log.warning("fill(%d) supera el máximo; se limita a %d filas", n_rows, self.rows - 1)
-        n_rows = min(n_rows, self.rows - 1)
+    def fill(self) -> None:
+        """Llena todo el tablero al azar, asegurando que haya jugadas."""
         for attempt in range(200):
-            self.grid = [[EMPTY] * self.cols for _ in range(self.rows)]
-            for r in range(self.rows - n_rows, self.rows):
-                self.grid[r] = self._random_row()
+            self.grid = [[self._random_color() for _ in range(self.cols)]
+                         for _ in range(self.rows)]
             if self.has_moves():
-                log.debug("Tablero rellenado con %d filas en %d intentos", n_rows, attempt + 1)
+                log.debug("Tablero lleno en %d intentos", attempt + 1)
                 return
-        log.warning("No se encontró un tablero con jugadas tras 200 intentos (%d filas, %d colores)",
-                    n_rows, self.n_colors)
+        log.warning("No se encontró un tablero con jugadas tras 200 intentos (%d colores)",
+                    self.n_colors)
 
     # --- consultas ---
     def get(self, r: int, c: int) -> int:
@@ -88,7 +94,7 @@ class Board:
         return 0
 
     def group_at(self, r: int, c: int) -> list[Cell]:
-        """Orbes conectados (ortogonalmente) del mismo color que el de (r, c)."""
+        """Orbes conectados (ver ``neighbours``) del mismo color que el de (r, c)."""
         if not (0 <= r < self.rows and 0 <= c < self.cols):
             return []
         color = self.grid[r][c]
@@ -98,7 +104,7 @@ class Board:
         stack = [(r, c)]
         while stack:
             cr, cc = stack.pop()
-            for nr, nc in ((cr - 1, cc), (cr + 1, cc), (cr, cc - 1), (cr, cc + 1)):
+            for nr, nc in neighbours(cr, cc):
                 if (0 <= nr < self.rows and 0 <= nc < self.cols
                         and (nr, nc) not in seen and self.grid[nr][nc] == color):
                     seen.add((nr, nc))
@@ -106,15 +112,16 @@ class Board:
         return sorted(seen)
 
     def has_moves(self) -> bool:
+        """True si existe algún grupo de al menos ``MIN_GROUP`` orbes."""
+        seen: set[Cell] = set()
         for r in range(self.rows):
             for c in range(self.cols):
-                v = self.grid[r][c]
-                if v == EMPTY:
+                if (r, c) in seen or self.grid[r][c] == EMPTY:
                     continue
-                if c + 1 < self.cols and self.grid[r][c + 1] == v:
+                group = self.group_at(r, c)
+                if len(group) >= S.MIN_GROUP:
                     return True
-                if r + 1 < self.rows and self.grid[r + 1][c] == v:
-                    return True
+                seen.update(group)
         return False
 
     # --- acciones ---
@@ -129,37 +136,31 @@ class Board:
         return Clear(group, color, self.settle())
 
     def settle(self) -> list[Move]:
-        """Gravedad hacia abajo y compactación de columnas hacia la izquierda."""
-        stacks = []
-        for c in range(self.cols):
-            stack = [(self.grid[r][c], r, c)
-                     for r in range(self.rows - 1, -1, -1) if self.grid[r][c] != EMPTY]
-            if stack:                       # de abajo hacia arriba
-                stacks.append(stack)
-        self.grid = [[EMPTY] * self.cols for _ in range(self.rows)]
+        """Gravedad hacia abajo: cada orbe cae dentro de su propia columna."""
         moves: list[Move] = []
-        for nc, stack in enumerate(stacks):
-            for i, (color, sr, sc) in enumerate(stack):
+        for c in range(self.cols):
+            stack = [(self.grid[r][c], r)       # de abajo hacia arriba
+                     for r in range(self.rows - 1, -1, -1) if self.grid[r][c] != EMPTY]
+            for r in range(self.rows):
+                self.grid[r][c] = EMPTY
+            for i, (color, sr) in enumerate(stack):
                 nr = self.rows - 1 - i
-                self.grid[nr][nc] = color
-                if (sr, sc) != (nr, nc):
-                    moves.append(((sr, sc), (nr, nc)))
+                self.grid[nr][c] = color
+                if sr != nr:
+                    moves.append(((sr, c), (nr, c)))
         return moves
 
-    def push_row(self) -> list[Move] | None:
-        """Sube todo una fila y entra ``next_row`` por abajo. None si desborda (fin de partida)."""
-        if any(v != EMPTY for v in self.grid[0]):
-            log.debug("push_row: desbordamiento, la fila superior está ocupada")
-            return None
+    def rain(self) -> list[Move]:
+        """Llena todos los huecos con orbes nuevos que caen desde encima del tablero.
+
+        En cada columna los huecos están arriba (el tablero está asentado); los orbes nuevos
+        caen como un bloque desde justo encima, así que el origen tiene fila negativa.
+        """
         moves: list[Move] = []
-        for r in range(self.rows - 1):
-            for c in range(self.cols):
-                v = self.grid[r + 1][c]
-                self.grid[r][c] = v
-                if v != EMPTY:
-                    moves.append(((r + 1, c), (r, c)))
         for c in range(self.cols):
-            self.grid[self.rows - 1][c] = self.next_row[c]
-            moves.append(((self.rows, c), (self.rows - 1, c)))
-        self.next_row = self._random_row()
+            empty = sum(1 for r in range(self.rows) if self.grid[r][c] == EMPTY)
+            for r in range(empty):
+                self.grid[r][c] = self._random_color()
+                moves.append(((r - empty, c), (r, c)))
+        log.debug("Lluvia: %d orbes nuevos", len(moves))
         return moves
