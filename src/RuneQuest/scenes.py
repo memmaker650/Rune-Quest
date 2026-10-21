@@ -15,7 +15,7 @@ from .board import neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
-from .ui import Button, CloseButton, FlagButton, ModeButton, draw_text
+from .ui import Button, CloseButton, FlagButton, ModeButton, draw_text, draw_text_outlined
 
 log = logging.getLogger(__name__)
 
@@ -372,11 +372,17 @@ class GameScene(Scene):
         self.assist = assist_mode(app.db)
         self.links = links_enabled(app.db)
         self._links_cache = (None, [], [])  # (tablero, pares, triángulos) de los enlaces
+        # Los enlaces se ocultan mientras llueve y vuelven LINKS_DELAY_AFTER_RAIN segundos
+        # después de que caiga el último orbe, con un fundido.
+        self.rain_falling = False
+        self.links_wait = 0.0
+        self.links_alpha = 1.0       # 0 = ocultos, 1 = visibles
         self.best = app.db.best_score()
         self.hud = pygame.font.Font(None, 28)
         self.small = pygame.font.Font(None, 22)
         self.big = pygame.font.Font(None, 56)
         self.bonus_font = pygame.font.Font(None, 46)
+        self.score_font = pygame.font.Font(None, 52)     # puntuación final
         self.offsets: dict = {}      # (fila, col) -> [dx, dy, velocidad]; dx, dy decaen a 0
         self.particles: list = []    # [x, y, vx, vy, vida, color]
         self.floaters: list = []     # [texto, x, y, vida]
@@ -469,6 +475,8 @@ class GameScene(Scene):
                 self._bonus_banner(t("bonus.board"), S.ACCENT, d["bonus"])
             elif ev.kind == "rain":
                 self._apply_moves(d["moves"], rate=S.RAIN_ANIM_RATE)
+                self.rain_falling = True
+                self.links_alpha = 0.0
                 self._queue_banner([(t("game.rain"), self.big, S.ACCENT)], 1.2)
             elif ev.kind == "level":
                 self._queue_banner([(t("game.level_banner", level=d["level"]), self.big,
@@ -517,6 +525,7 @@ class GameScene(Scene):
             off[1] *= k
             if abs(off[0]) < 0.5 and abs(off[1]) < 0.5:
                 del self.offsets[cell]
+        self._update_links_visibility(dt)
         for p in self.particles:
             p[0] += p[2] * dt
             p[1] += p[3] * dt
@@ -540,7 +549,7 @@ class GameScene(Scene):
 
         # Orbes (recortados al tablero para que la lluvia entre "desde fuera").
         surf.set_clip(BOARD_RECT)
-        if self.links:
+        if self.links and self.links_alpha > 0:
             self._draw_links(surf)
         for r in range(S.ROWS):
             for c in range(S.COLS):
@@ -575,6 +584,19 @@ class GameScene(Scene):
             self._draw_banner(surf, self.banners[0][0])
         if g.over:
             self._draw_over(surf)
+
+    def _rain_still_falling(self) -> bool:
+        return any(len(off) > 2 and off[2] == S.RAIN_ANIM_RATE for off in self.offsets.values())
+
+    def _update_links_visibility(self, dt):
+        if self.rain_falling:
+            if not self._rain_still_falling():   # acaba de caer el último orbe
+                self.rain_falling = False
+                self.links_wait = S.LINKS_DELAY_AFTER_RAIN
+        elif self.links_wait > 0:
+            self.links_wait -= dt
+        elif self.links_alpha < 1:
+            self.links_alpha = min(1.0, self.links_alpha + dt / S.LINKS_FADE_IN)
 
     def _link_pairs(self):
         """Pares de orbes vecinos que pertenecen a una misma combinación jugable."""
@@ -633,6 +655,8 @@ class GameScene(Scene):
             pygame.draw.line(layer, rgba, pa, pb, S.LINK_WIDTH)
             for p in (pa, pb):  # extremos redondeados para que las uniones queden limpias
                 pygame.draw.circle(layer, rgba, (round(p[0]), round(p[1])), S.LINK_WIDTH // 2)
+        if self.links_alpha < 1:
+            layer.set_alpha(round(255 * self.links_alpha))
         surf.blit(layer, BOARD_RECT.topleft)
 
     def _draw_banner(self, surf, lines):
@@ -673,11 +697,19 @@ class GameScene(Scene):
         dim.fill((0, 0, 0, 170))
         surf.blit(dim, (0, 0))
         cx = S.LOGICAL_W // 2
-        draw_text(surf, self.big, t("over.title"), S.ACCENT, center=(cx, 290))
-        draw_text(surf, self.hud, t("over.points", score=g.score), S.WHITE, center=(cx, 350))
-        draw_text(surf, self.hud, t("over.stats", level=g.level, chain=g.best_chain),
-                  S.WHITE, center=(cx, 385))
+        panel = pygame.Rect(16, 236, S.LOGICAL_W - 32, 300)
+        pygame.draw.rect(surf, S.OVER_PANEL, panel, border_radius=18)
+        pygame.draw.rect(surf, S.BUTTON_EDGE, panel, width=2, border_radius=18)
+        draw_text(surf, self.big, t("over.title"), S.ACCENT, center=(cx, 280))
+        points = t("over.points", score=format_points(g.score))
+        # La letra más grande que quepa en el panel (puntuaciones de muchas cifras).
+        font = next((f for f in (self.score_font, self.bonus_font)
+                     if f.size(points)[0] <= panel.width - 24), self.hud)
+        draw_text_outlined(surf, font, points, S.GOLD, S.GOLD_OUTLINE, center=(cx, 345))
+        draw_text(surf, self.hud, t("over.level", level=g.level), S.WHITE, center=(cx, 397))
+        draw_text(surf, self.hud, t("over.best_combo", count=g.best_chain), S.WHITE,
+                  center=(cx, 430))
         if g.score and g.score >= self.best:
-            draw_text(surf, self.hud, t("over.new_record"), S.BUTTON_EDGE, center=(cx, 425))
+            draw_text(surf, self.hud, t("over.new_record"), S.BUTTON_EDGE, center=(cx, 470))
         if self.over_t > 0.6:
-            draw_text(surf, self.small, t("over.back"), S.WHITE, center=(cx, 480))
+            draw_text(surf, self.small, t("over.back"), S.WHITE, center=(cx, 510))

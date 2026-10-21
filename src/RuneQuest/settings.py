@@ -24,6 +24,8 @@ FPS = 60
 ANIM_RATE = 12.0                 # velocidad con que los orbes llegan a su sitio (mayor = más rápido)
 LINK_ALPHA = 135                 # opacidad (0-255) de los enlaces entre orbes de un grupo
 LINK_WIDTH = int(CELL * 0.62)    # grosor de esos enlaces
+LINKS_DELAY_AFTER_RAIN = 0.5     # segundos sin enlaces tras terminar de caer la lluvia
+LINKS_FADE_IN = 0.25             # y luego aparecen con este fundido (segundos)
 RAIN_ANIM_RATE = 6.0             # la lluvia de orbes cae a la mitad de velocidad
 
 # --- Modos de juego (de momento todos usan las mismas reglas) ---
@@ -53,6 +55,9 @@ ACCENT = (150, 210, 255)
 BUTTON = (50, 60, 120)
 BUTTON_PRESSED = (28, 34, 72)     # botón mientras se mantiene pulsado
 BUTTON_EDGE = (120, 140, 230)
+GOLD = (255, 204, 51)            # amarillo dorado de la puntuación final (contraste ~12:1 sobre
+GOLD_OUTLINE = (60, 36, 0)       # el panel oscuro); el contorno lo mantiene legible sobre cualquier fondo
+OVER_PANEL = (10, 12, 28)        # panel de fin de partida
 
 PALETTE = [
     (232, 84, 84),     # 0 rojo

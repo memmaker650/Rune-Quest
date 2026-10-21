@@ -185,3 +185,30 @@ def test_links_join_playable_groups_and_can_be_switched_off(tmp_path):
     _tap(menu, links.rect.center)
     assert dict(menu.buttons)["links"].label == "Enlaces: no"
     assert GameScene(app, seed=1).links is False
+
+
+def test_links_appear_half_a_second_after_the_rain_lands(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    scene = GameScene(app, seed=1)
+    assert scene.links_alpha == 1.0                     # al empezar se ven ya
+    board = scene.game.board
+    for c in range(board.cols):                          # vacía media columna por columna
+        for r in range(6):
+            board.grid[r][c] = -1
+    scene._apply_moves(board.rain(), rate=S.RAIN_ANIM_RATE)
+    scene.rain_falling, scene.links_alpha = True, 0.0    # lo que hace el evento "rain"
+
+    dt, t, landed, shown = 1 / 60, 0.0, None, None
+    while t < 5 and shown is None:
+        scene.update(dt)
+        t += dt
+        if landed is None and not scene._rain_still_falling():
+            landed = t
+        if scene.links_alpha > 0:
+            shown = t
+    assert landed is not None and shown is not None
+    assert abs((shown - landed) - S.LINKS_DELAY_AFTER_RAIN) < 2 * dt
+    for _ in range(round(S.LINKS_FADE_IN / dt) + 2):
+        scene.update(dt)
+    assert scene.links_alpha == 1.0
+    print(f"lluvia en el suelo a {landed:.2f}s, enlaces a {shown:.2f}s")

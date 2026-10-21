@@ -51,7 +51,8 @@
     <text key="game.level_banner">¡Nivel {level}!</text>
     <text key="over.title">Fin de la partida</text>
     <text key="over.points">Puntos: {score}</text>
-    <text key="over.stats">Nivel {level}  ·  mejor cadena {chain}</text>
+    <text key="over.level">Nivel {level}</text>
+    <text key="over.best_combo">Mejor combinación: {count} orbes</text>
     <text key="over.new_record">¡Nuevo récord!</text>
     <text key="over.back">Toca para volver al menú</text>
     <text key="player.default">Jugador</text>
@@ -102,7 +103,8 @@
     <text key="game.level_banner">Level {level}!</text>
     <text key="over.title">Game over</text>
     <text key="over.points">Score: {score}</text>
-    <text key="over.stats">Level {level}  ·  best chain {chain}</text>
+    <text key="over.level">Level {level}</text>
+    <text key="over.best_combo">Best combination: {count} orbs</text>
     <text key="over.new_record">New record!</text>
     <text key="over.back">Tap to return to the menu</text>
     <text key="player.default">Player</text>
@@ -153,7 +155,8 @@
     <text key="game.level_banner">Niveau {level} !</text>
     <text key="over.title">Partie terminée</text>
     <text key="over.points">Points : {score}</text>
-    <text key="over.stats">Niveau {level}  ·  chaîne max {chain}</text>
+    <text key="over.level">Niveau {level}</text>
+    <text key="over.best_combo">Meilleure combinaison : {count} orbes</text>
     <text key="over.new_record">Nouveau record !</text>
     <text key="over.back">Touchez pour revenir au menu</text>
     <text key="player.default">Joueur</text>

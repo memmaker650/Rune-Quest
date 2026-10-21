@@ -19,6 +19,18 @@ def draw_text(surf, font, text, color, center=None, topleft=None, topright=None)
     return rect
 
 
+def draw_text_outlined(surf, font, text, color, outline, center, thickness=2):
+    """Texto con contorno: se lee bien aunque el fondo tenga zonas claras."""
+    shadow = font.render(text, True, outline)
+    rect = shadow.get_rect(center=center)
+    for dx in range(-thickness, thickness + 1):
+        for dy in range(-thickness, thickness + 1):
+            if dx or dy:
+                surf.blit(shadow, rect.move(dx, dy))
+    surf.blit(font.render(text, True, color), rect)
+    return rect
+
+
 class Button:
     def __init__(self, rect, label):
         self.rect = pygame.Rect(rect)
