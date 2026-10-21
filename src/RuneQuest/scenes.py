@@ -11,6 +11,7 @@ import pygame
 from . import translations
 from . import settings as S
 from .controls import is_confirm, is_real_mouse_motion, release_position, tap_position
+from .board import neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
@@ -24,6 +25,11 @@ IS_IOS = sys.platform == "ios"
 def format_points(n: int) -> str:
     """5000 -> "5.000" (es), "5,000" (en), "5 000" (fr): separador de miles del idioma."""
     return f"{n:,}".replace(",", t("format.thousands"))
+
+
+def links_enabled(db) -> bool:
+    """Si se dibujan los enlaces que unen los orbes de cada combinación (activado por defecto)."""
+    return db.get_setting("links", "1") == "1"
 
 
 def assist_mode(db) -> str:
@@ -110,14 +116,17 @@ class MenuScene(ButtonScene):
             ("scores", t("menu.scores")),
         ]
         self.buttons = []
-        y = 316
+        y = 312
         for name, label in entries:
-            self.buttons.append((name, Button((60, y, 240, 52), label)))
-            y += 62
+            self.buttons.append((name, Button((60, y, 240, 50), label)))
+            y += 58
         assist = assist_mode(self.app.db)
         self.buttons.append(("assist", ModeButton(
-            (60, y, 240, 70), t("menu.assist"), t(f"assist.{assist}"),
+            (60, y, 240, 66), t("menu.assist"), t(f"assist.{assist}"),
             S.ASSIST_MODES.index(assist), len(S.ASSIST_MODES), self.small)))
+        y += 74
+        links = "menu.links_on" if links_enabled(self.app.db) else "menu.links_off"
+        self.buttons.append(("links", Button((60, y, 240, 50), t(links))))
         self.lang_button = FlagButton((S.LOGICAL_W - 66, S.LOGICAL_H - 52, 54, 38),
                                       translations.current().flag)
 
@@ -150,6 +159,15 @@ class MenuScene(ButtonScene):
             self.app.change_scene(NewGameScene(self.app))
         elif name == "scores":
             self.app.change_scene(ScoresScene(self.app))
+        elif name == "links":
+            on = links_enabled(self.app.db)
+            try:
+                self.app.db.set_setting("links", "0" if on else "1")
+            except sqlite3.Error:
+                log.error("No se pudo cambiar la opción de enlaces; se mantiene como estaba")
+            else:
+                log.info("Enlaces entre orbes: %s", "no" if on else "sí")
+            self._build_buttons()
         elif name == "assist":
             current = S.ASSIST_MODES.index(assist_mode(self.app.db))
             mode = S.ASSIST_MODES[(current + 1) % len(S.ASSIST_MODES)]
@@ -352,6 +370,8 @@ class GameScene(Scene):
         super().__init__(app)
         self.game = game or Game(seed=seed, mode=mode)
         self.assist = assist_mode(app.db)
+        self.links = links_enabled(app.db)
+        self._links_cache = (None, [], [])  # (tablero, pares, triángulos) de los enlaces
         self.best = app.db.best_score()
         self.hud = pygame.font.Font(None, 28)
         self.small = pygame.font.Font(None, 22)
@@ -371,7 +391,8 @@ class GameScene(Scene):
     def _cell_at(self, pos):
         x, y = pos
         c = int((x - S.BOARD_X) // S.CELL)
-        r = int((y - S.BOARD_Y) // S.CELL)
+        shift = S.COL_SHIFT if c % 2 else 0        # columnas impares: media celda más abajo
+        r = int((y - S.BOARD_Y - shift) // S.CELL)
         if 0 <= r < S.ROWS and 0 <= c < S.COLS:
             return r, c
         return None
@@ -399,7 +420,8 @@ class GameScene(Scene):
 
     # --- eventos del juego -> efectos visuales ---
     def _cell_center(self, r, c):
-        return (S.BOARD_X + c * S.CELL + S.CELL / 2, S.BOARD_Y + r * S.CELL + S.CELL / 2)
+        shift = S.COL_SHIFT if c % 2 else 0        # columnas impares: media celda más abajo
+        return (S.BOARD_X + c * S.CELL + S.CELL / 2, S.BOARD_Y + r * S.CELL + S.CELL / 2 + shift)
 
     def _apply_moves(self, moves, cleared=(), rate=S.ANIM_RATE):
         old = self.offsets
@@ -518,6 +540,8 @@ class GameScene(Scene):
 
         # Orbes (recortados al tablero para que la lluvia entre "desde fuera").
         surf.set_clip(BOARD_RECT)
+        if self.links:
+            self._draw_links(surf)
         for r in range(S.ROWS):
             for c in range(S.COLS):
                 v = g.board.get(r, c)
@@ -551,6 +575,65 @@ class GameScene(Scene):
             self._draw_banner(surf, self.banners[0][0])
         if g.over:
             self._draw_over(surf)
+
+    def _link_pairs(self):
+        """Pares de orbes vecinos que pertenecen a una misma combinación jugable."""
+        return self._link_shapes()[0]
+
+    def _link_shapes(self):
+        """(pares, triángulos) de orbes vecinos de una misma combinación jugable. Los triángulos
+        (tres orbes que se tocan entre sí) se rellenan para que no queden huecos en las uniones.
+        Se recalcula solo cuando cambia el tablero."""
+        grid = self.game.board.grid
+        snapshot = tuple(map(tuple, grid))
+        if self._links_cache[0] == snapshot:
+            return self._links_cache[1:]
+        pairs, triangles, seen = [], [], set()
+        board = self.game.board
+        for r in range(board.rows):
+            for c in range(board.cols):
+                if (r, c) in seen or grid[r][c] < 0:
+                    continue
+                group = board.group_at(r, c)
+                seen.update(group)
+                if len(group) < S.MIN_GROUP:
+                    continue
+                members = set(group)
+                for cell in group:
+                    near = [o for o in neighbours(*cell) if o in members and cell < o]
+                    for other in near:
+                        pairs.append((cell, other, grid[r][c]))
+                        for third in near:
+                            if other < third and third in neighbours(*other):
+                                triangles.append((cell, other, third, grid[r][c]))
+        self._links_cache = (snapshot, pairs, triangles)
+        return pairs, triangles
+
+    def _orb_pos(self, cell):
+        cx, cy = self._cell_center(*cell)
+        ox, oy = self.offsets.get(cell, (0.0, 0.0))[:2]
+        return cx + ox - BOARD_RECT.left, cy + oy - BOARD_RECT.top
+
+    def _draw_links(self, surf):
+        """Bandas translúcidas del color del grupo que unen sus orbes (bajo los orbes)."""
+        pairs, triangles = self._link_shapes()
+        if not pairs:
+            return
+        layer = pygame.Surface(BOARD_RECT.size, pygame.SRCALPHA)
+
+        def tint(color):  # el color del orbe, algo aclarado (como en un cristal)
+            base = S.PALETTE[color % len(S.PALETTE)]
+            return (*(v + (255 - v) * 0.2 for v in base), S.LINK_ALPHA)
+
+        for a, b, c, color in triangles:
+            pygame.draw.polygon(layer, tint(color), [self._orb_pos(p) for p in (a, b, c)])
+        for a, b, color in pairs:
+            rgba = tint(color)
+            pa, pb = self._orb_pos(a), self._orb_pos(b)
+            pygame.draw.line(layer, rgba, pa, pb, S.LINK_WIDTH)
+            for p in (pa, pb):  # extremos redondeados para que las uniones queden limpias
+                pygame.draw.circle(layer, rgba, (round(p[0]), round(p[1])), S.LINK_WIDTH // 2)
+        surf.blit(layer, BOARD_RECT.topleft)
 
     def _draw_banner(self, surf, lines):
         """Aviso centrado sobre el tablero, con un panel translúcido para que se lea bien."""

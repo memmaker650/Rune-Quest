@@ -14,13 +14,16 @@ CELL = 45
 BOARD_X = 0
 BOARD_Y = 100
 BOARD_W = COLS * CELL            # 360
-BOARD_H = ROWS * CELL            # 630
+COL_SHIFT = CELL // 2            # las columnas impares están desplazadas media celda hacia abajo
+BOARD_H = ROWS * CELL + COL_SHIFT  # 652
 
 # --- Pantalla lógica (relación ~ iPhone en vertical) ---
 LOGICAL_W = BOARD_W
 LOGICAL_H = 760
 FPS = 60
 ANIM_RATE = 12.0                 # velocidad con que los orbes llegan a su sitio (mayor = más rápido)
+LINK_ALPHA = 135                 # opacidad (0-255) de los enlaces entre orbes de un grupo
+LINK_WIDTH = int(CELL * 0.62)    # grosor de esos enlaces
 RAIN_ANIM_RATE = 6.0             # la lluvia de orbes cae a la mitad de velocidad
 
 # --- Modos de juego (de momento todos usan las mismas reglas) ---

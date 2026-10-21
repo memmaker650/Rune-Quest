@@ -1,20 +1,27 @@
 import random
 
 from RuneQuest import settings as S
-from RuneQuest.board import EMPTY, Board
+from RuneQuest.board import EMPTY, Board, neighbours
 
 
-def test_group_includes_diagonals():
+def test_neighbours_follow_the_staggered_columns():
+    # Columna par (2): la fila de arriba y la misma en las columnas de al lado.
+    assert sorted(neighbours(2, 2)) == [(1, 1), (1, 2), (1, 3), (2, 1), (2, 3), (3, 2)]
+    # Columna impar (1), desplazada media celda hacia abajo: la misma fila y la de abajo.
+    assert sorted(neighbours(2, 1)) == [(1, 1), (2, 0), (2, 2), (3, 0), (3, 1), (3, 2)]
+
+
+def test_group_uses_the_six_staggered_neighbours():
     b = Board.from_text([
-        "10.",
-        "01.",
-        "..1",
+        "00.",
+        "..0",
+        "1..",
     ])
-    # Los '1' en diagonal forman un único grupo de 3.
-    assert b.group_at(0, 0) == [(0, 0), (1, 1), (2, 2)]
-    assert b.group_at(1, 1) == [(0, 0), (1, 1), (2, 2)]
-    assert b.group_at(0, 1) == [(0, 1), (1, 0)]  # pareja en anti-diagonal
-    assert b.group_at(2, 0) == []              # celda vacía
+    # (0,1) está en una columna impar: toca a (0,0) y, en diagonal, a (1,2).
+    assert b.group_at(0, 0) == [(0, 0), (0, 1), (1, 2)]
+    # En la rejilla escalonada (0,0) y (1,1) ya no son vecinos.
+    assert Board.from_text(["0.", ".0"]).group_at(0, 0) == [(0, 0)]
+    assert b.group_at(2, 1) == []              # celda vacía
     assert b.group_at(-1, 0) == []             # fuera del tablero
 
 
@@ -107,7 +114,7 @@ def test_has_moves():
     assert Board.from_text(["01", "10"]).has_moves() is False
     assert Board.from_text(["00", "12"]).has_moves() is False    # solo una pareja
     assert Board.from_text(["01", "11"]).has_moves() is True     # grupo de 3 en "L"
-    assert Board.from_text(["0.1", ".0.", "1.0"]).has_moves() is True  # diagonal de 3
+    assert Board.from_text(["00.", "..0"]).has_moves() is True     # 3 en la rejilla escalonada
     assert Board.from_text(["..", ".."]).has_moves() is False
 
 

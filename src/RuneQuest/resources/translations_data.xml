@@ -11,6 +11,8 @@
     <text key="menu.continue">Continuar</text>
     <text key="menu.play">Jugar</text>
     <text key="menu.scores">Puntuaciones</text>
+    <text key="menu.links_on">Enlaces: sí</text>
+    <text key="menu.links_off">Enlaces: no</text>
     <text key="menu.assist">Ayuda</text>
     <text key="assist.none">No</text>
     <text key="assist.geo">Geo</text>
@@ -60,6 +62,8 @@
     <text key="menu.continue">Continue</text>
     <text key="menu.play">Play</text>
     <text key="menu.scores">High scores</text>
+    <text key="menu.links_on">Links: on</text>
+    <text key="menu.links_off">Links: off</text>
     <text key="menu.assist">Assist</text>
     <text key="assist.none">Off</text>
     <text key="assist.geo">Geo</text>
@@ -109,6 +113,8 @@
     <text key="menu.continue">Continuer</text>
     <text key="menu.play">Jouer</text>
     <text key="menu.scores">Scores</text>
+    <text key="menu.links_on">Liens : oui</text>
+    <text key="menu.links_off">Liens : non</text>
     <text key="menu.assist">Aide</text>
     <text key="assist.none">Non</text>
     <text key="assist.geo">Géo</text>

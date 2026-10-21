@@ -18,7 +18,15 @@ log = logging.getLogger(__name__)
 
 EMPTY = -1
 # Vecinos de una celda: ortogonales y diagonales.
-NEIGHBOURS = [(dr, dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1) if (dr, dc) != (0, 0)]
+
+
+def neighbours(r: int, c: int) -> list:
+    """Vecinos de (r, c) en la rejilla escalonada: las columnas impares están desplazadas media
+    celda hacia abajo, así que cada orbe toca 6 orbes: arriba, abajo y dos en cada columna de al
+    lado (en una columna par, la fila de arriba y la misma; en una impar, la misma y la de abajo).
+    """
+    side_rows = (r - 1, r) if c % 2 == 0 else (r, r + 1)
+    return [(r - 1, c), (r + 1, c)] + [(sr, c + dc) for dc in (-1, 1) for sr in side_rows]
 Cell = tuple[int, int]            # (fila, columna)
 Move = tuple[Cell, Cell]          # (origen, destino); una fila < 0 está sobre el tablero
 
@@ -86,7 +94,7 @@ class Board:
         return 0
 
     def group_at(self, r: int, c: int) -> list[Cell]:
-        """Orbes conectados (en horizontal, vertical o diagonal) del mismo color que (r, c)."""
+        """Orbes conectados (ver ``neighbours``) del mismo color que el de (r, c)."""
         if not (0 <= r < self.rows and 0 <= c < self.cols):
             return []
         color = self.grid[r][c]
@@ -96,8 +104,7 @@ class Board:
         stack = [(r, c)]
         while stack:
             cr, cc = stack.pop()
-            for dr, dc in NEIGHBOURS:
-                nr, nc = cr + dr, cc + dc
+            for nr, nc in neighbours(cr, cc):
                 if (0 <= nr < self.rows and 0 <= nc < self.cols
                         and (nr, nc) not in seen and self.grid[nr][nc] == color):
                     seen.add((nr, nc))

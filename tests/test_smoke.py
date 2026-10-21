@@ -157,3 +157,31 @@ def test_back_button_returns_to_menu(tmp_path):
     app.change_scene(scene)
     _tap(scene, scene.back_button.rect.center)
     assert isinstance(app.scene, MenuScene)
+
+
+def test_tap_hits_the_staggered_cell(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    scene = GameScene(app, seed=1)
+    for r, c in [(0, 0), (0, 1), (5, 3), (13, 6), (13, 7)]:
+        assert scene._cell_at(scene._cell_center(r, c)) == (r, c)
+    # La media celda vacía sobre una columna impar no es ninguna casilla.
+    assert scene._cell_at((S.CELL * 1.5, S.BOARD_Y + 5)) is None
+
+
+def test_links_join_playable_groups_and_can_be_switched_off(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    scene = GameScene(app, seed=1)
+    board = scene.game.board
+    board.grid = [[(r % 2) * 2 + c % 2 for c in range(board.cols)] for r in range(board.rows)]
+    board.grid[0][0] = board.grid[0][1] = board.grid[1][2] = 5    # un único grupo de 3
+    pairs = scene._link_pairs()
+    assert sorted((a, b) for a, b, _ in pairs) == [((0, 0), (0, 1)), ((0, 1), (1, 2))]
+    assert all(color == 5 for _, _, color in pairs)
+    scene.draw(app.display.surface)
+
+    menu = MenuScene(app)
+    links = dict(menu.buttons)["links"]
+    assert links.label == "Enlaces: sí"
+    _tap(menu, links.rect.center)
+    assert dict(menu.buttons)["links"].label == "Enlaces: no"
+    assert GameScene(app, seed=1).links is False
