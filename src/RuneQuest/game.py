@@ -13,9 +13,18 @@ import random
 from dataclasses import dataclass, field
 
 from . import settings as S
-from .board import EMPTY, Board
+from .board import EMPTY, SURPRISE, Board, neighbours
 
 log = logging.getLogger(__name__)
+
+
+# Efectos del orbe sorpresa (misma probabilidad cada uno):
+#   vanish    desaparece y los de encima caen a ocupar el hueco
+#   explode   explota y destruye también sus 6 vecinos
+#   neighbour se convierte en el color de uno de sus vecinos, al azar
+#   next      se convierte en el color del próximo orbe que caerá
+#   mega      mega explosión: destruye todo a SURPRISE_MEGA_DEPTH pasos o menos
+SURPRISE_EFFECTS = ("vanish", "explode", "neighbour", "next", "mega")
 
 
 def level_params(level: int) -> dict:
@@ -33,8 +42,8 @@ def clear_points(n: int) -> int:
 
 @dataclass
 class Event:
-    """Aviso para la capa visual: 'clear', 'color_clear', 'board_clear', 'rain', 'level'
-    u 'over'."""
+    """Aviso para la capa visual: 'clear', 'color_clear', 'board_clear', 'rain', 'level',
+    'surprise_spawn', 'surprise' u 'over'."""
     kind: str
     data: dict = field(default_factory=dict)
 
@@ -82,7 +91,8 @@ class Game:
         g.best_chain = int(state.get("best_chain", 0))
         grid = [[EMPTY] * g.board.cols for _ in range(g.board.rows)]
         for r, c, color in state["balls"]:
-            if not (0 <= r < g.board.rows and 0 <= c < g.board.cols and 0 <= color < S.MAX_COLORS):
+            valid_color = 0 <= color < S.MAX_COLORS or color == SURPRISE
+            if not (0 <= r < g.board.rows and 0 <= c < g.board.cols and valid_color):
                 raise ValueError(f"bola fuera de rango: fila {r}, columna {c}, color {color}")
             grid[r][c] = color
         g.board.grid = grid
@@ -108,6 +118,9 @@ class Game:
         if self.over:
             log.warning("Toque en (%d, %d) con la partida ya terminada; se ignora", r, c)
             return False
+        if self.board.get(r, c) == SURPRISE:
+            self.open_surprise(r, c)
+            return True
         result = self.board.clear_group(r, c)
         if result is None:
             return False
@@ -121,18 +134,85 @@ class Game:
             "cells": result.cells, "color": result.color, "points": points,
             "moves": result.moves,
         }))
-        self._check_clear_bonuses(result.color)
+        self._check_clear_bonuses({result.color})
+        self._after_move()
+        return True
 
+    def _after_move(self) -> None:
         while self.score >= self.next_level_at:
             self._level_up()
         if not self.board.has_moves():
             self._rain()
-        return True
 
-    def _check_clear_bonuses(self, color: int) -> None:
-        """Bonus por eliminar todos los orbes de ``color`` y por dejar el tablero vacío
-        (el último grupo de una pantalla limpia gana los dos)."""
-        if not any(v == color for row in self.board.grid for v in row):
+    # --- orbe sorpresa ---
+    def open_surprise(self, r: int, c: int, effect: str | None = None) -> None:
+        """Pulsar el orbe sorpresa de (r, c): aplica ``effect`` (o uno al azar)."""
+        board = self.board
+        effect = effect or self.rng.choice(SURPRISE_EFFECTS)
+        destroyed, color = [], None
+        if effect == "vanish":
+            destroyed = [(r, c)]
+        elif effect == "explode":
+            destroyed = board.cells_within(r, c, 1)
+        elif effect == "mega":
+            destroyed = board.cells_within(r, c, S.SURPRISE_MEGA_DEPTH)
+        elif effect == "neighbour":
+            around = [board.get(nr, nc) for nr, nc in neighbours(r, c)
+                      if 0 <= nr < board.rows and 0 <= nc < board.cols]
+            around = [v for v in around if v != EMPTY and v != SURPRISE]
+            color = self.rng.choice(around) if around else board.next_color
+        elif effect == "next":
+            color = board.next_color
+        else:
+            raise ValueError(f"efecto sorpresa desconocido: {effect!r}")
+
+        colors = {board.get(*cell) for cell in destroyed} - {SURPRISE}
+        orbs = [cell for cell in destroyed if board.get(*cell) != SURPRISE]
+        points = clear_points(len(orbs)) if orbs else 0
+        cell_colors = [board.get(*cell) for cell in destroyed]
+        moves = []
+        if color is not None:
+            board.grid[r][c] = color
+        else:
+            moves = board.remove(destroyed)
+        self.score += points
+        self.taps += 1
+        log.info("Orbe sorpresa en (%d, %d): %s (%d orbes destruidos, +%d)",
+                 r, c, effect, len(orbs), points)
+        self.events.append(Event("surprise", {
+            "cell": (r, c), "effect": effect, "cells": destroyed, "colors": cell_colors,
+            "color": color, "points": points, "moves": moves,
+        }))
+        if colors:
+            self._check_clear_bonuses(colors)
+        self._after_move()
+
+    def _maybe_spawn_surprise(self) -> None:
+        """En modo sorpresa, a partir de SURPRISE_FIRST_LEVEL y cada SURPRISE_EVERY niveles, un
+        orbe al azar se convierte en orbe sorpresa (solo puede haber uno a la vez)."""
+        if self.mode != "surprise" or self.level < S.SURPRISE_FIRST_LEVEL:
+            return
+        if (self.level - S.SURPRISE_FIRST_LEVEL) % S.SURPRISE_EVERY:
+            return
+        board = self.board
+        if board.find(SURPRISE) is not None:
+            log.info("Nivel %d: ya hay un orbe sorpresa en el tablero", self.level)
+            return
+        cells = [(r, c) for r in range(board.rows) for c in range(board.cols)
+                 if board.grid[r][c] not in (EMPTY, SURPRISE)]
+        if not cells:
+            return
+        r, c = self.rng.choice(cells)
+        board.grid[r][c] = SURPRISE
+        log.info("Nivel %d: aparece un orbe sorpresa en (%d, %d)", self.level, r, c)
+        self.events.append(Event("surprise_spawn", {"cell": (r, c)}))
+
+    def _check_clear_bonuses(self, colors) -> None:
+        """Bonus por cada color de ``colors`` que ya no quede en el tablero y por dejar el
+        tablero vacío (el último grupo de una pantalla limpia gana los dos)."""
+        for color in sorted(colors):
+            if any(v == color for row in self.board.grid for v in row):
+                continue
             self.score += S.COLOR_CLEAR_BONUS
             log.info("Color %d eliminado del tablero: +%d", color, S.COLOR_CLEAR_BONUS)
             self.events.append(Event("color_clear", {"color": color,
@@ -146,7 +226,8 @@ class Game:
         self.rains += 1
         log.info("Sin jugadas posibles: lluvia de orbes n.º %d", self.rains)
         self.events.append(Event("rain", {"moves": self.board.rain()}))
-        if not self.board.has_moves():
+        # Sin grupos tras la lluvia se acaba, salvo que quede el orbe sorpresa por pulsar.
+        if not self.board.has_moves() and self.board.find(SURPRISE) is None:
             self.over = True
             log.info("Fin de la partida: %d puntos, nivel %d, mejor cadena %d",
                      self.score, self.level, self.best_chain)
@@ -158,3 +239,4 @@ class Game:
         self.board.n_colors = p["colors"]
         log.info("Subida al nivel %d con %d puntos: %s", self.level, self.score, p)
         self.events.append(Event("level", {"level": self.level}))
+        self._maybe_spawn_surprise()

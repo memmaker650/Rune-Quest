@@ -17,6 +17,7 @@ from . import settings as S
 log = logging.getLogger(__name__)
 
 EMPTY = -1
+SURPRISE = 99                     # orbe sorpresa (modo Sorpresa): no forma grupos con nadie
 # Vecinos de una celda: ortogonales y diagonales.
 
 
@@ -45,6 +46,7 @@ class Board:
         self.n_colors = n_colors
         self.rng = rng or random.Random()
         self.grid = [[EMPTY] * cols for _ in range(rows)]
+        self.next_color = self._random_color()   # color del próximo orbe que caerá con la lluvia
 
     # --- construcción ---
     @classmethod
@@ -112,7 +114,8 @@ class Board:
         return sorted(seen)
 
     def has_moves(self) -> bool:
-        """True si existe algún grupo de al menos ``MIN_GROUP`` orbes."""
+        """True si existe algún grupo de al menos ``MIN_GROUP`` orbes. El orbe sorpresa no
+        cuenta: aunque lo haya, sin grupos llueve igual (se pulsa cuando el jugador quiera)."""
         seen: set[Cell] = set()
         for r in range(self.rows):
             for c in range(self.cols):
@@ -150,6 +153,34 @@ class Board:
                     moves.append(((sr, c), (nr, c)))
         return moves
 
+    def find(self, value: int) -> Cell | None:
+        """Primera celda con ``value`` (p. ej. el orbe sorpresa), o None."""
+        for r in range(self.rows):
+            for c in range(self.cols):
+                if self.grid[r][c] == value:
+                    return r, c
+        return None
+
+    def cells_within(self, r: int, c: int, depth: int) -> list[Cell]:
+        """Celdas con orbe a ``depth`` pasos o menos de (r, c) en la rejilla escalonada,
+        incluida (r, c). Cuenta los pasos aunque haya huecos por medio."""
+        frontier, seen = [(r, c)], {(r, c)}
+        for _ in range(depth):
+            nxt = []
+            for cell in frontier:
+                for nr, nc in neighbours(*cell):
+                    if 0 <= nr < self.rows and 0 <= nc < self.cols and (nr, nc) not in seen:
+                        seen.add((nr, nc))
+                        nxt.append((nr, nc))
+            frontier = nxt
+        return sorted(cell for cell in seen if self.grid[cell[0]][cell[1]] != EMPTY)
+
+    def remove(self, cells) -> list[Move]:
+        """Quita los orbes de ``cells`` y deja caer los de encima. Devuelve los movimientos."""
+        for r, c in cells:
+            self.grid[r][c] = EMPTY
+        return self.settle()
+
     def rain(self) -> list[Move]:
         """Llena todos los huecos con orbes nuevos que caen desde encima del tablero.
 
@@ -160,7 +191,8 @@ class Board:
         for c in range(self.cols):
             empty = sum(1 for r in range(self.rows) if self.grid[r][c] == EMPTY)
             for r in range(empty):
-                self.grid[r][c] = self._random_color()
+                self.grid[r][c] = self.next_color
+                self.next_color = self._random_color()
                 moves.append(((r - empty, c), (r, c)))
         log.debug("Lluvia: %d orbes nuevos", len(moves))
         return moves

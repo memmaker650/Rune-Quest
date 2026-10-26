@@ -11,7 +11,7 @@ import pygame
 from . import translations
 from . import settings as S
 from .controls import is_confirm, is_real_mouse_motion, release_position, tap_position
-from .board import neighbours
+from .board import SURPRISE, neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
@@ -467,9 +467,42 @@ class GameScene(Scene):
             new[(dr, dc)] = [ox + (sc - dc) * S.CELL, oy + (sr - dr) * S.CELL, rate]
         self.offsets = new
 
-    def _queue_banner(self, lines, life):
-        """Encola un aviso: ``lines`` = [(texto, fuente, color), ...] durante ``life`` segundos."""
-        self.banners.append([lines, life])
+    def _burst(self, cx, cy, color, count=6, speed=220):
+        """Partículas que saltan desde (cx, cy)."""
+        for _ in range(count):
+            ang = self.rng.uniform(0, math.tau)
+            v = self.rng.uniform(60, speed)
+            self.particles.append([cx, cy, math.cos(ang) * v, math.sin(ang) * v - 80,
+                                   self.rng.uniform(0.35, 0.7), color])
+
+    def _on_surprise(self, d):
+        """Efecto visual del orbe sorpresa: explosión, desaparición o cambio de color."""
+        effect = d["effect"]
+        big = effect in ("explode", "mega")
+        for (r, c), value in zip(d["cells"], d["colors"]):
+            color = S.SURPRISE_ORB if value == SURPRISE else S.PALETTE[value % len(S.PALETTE)]
+            self._burst(*self._cell_center(r, c), color, count=10 if big else 6,
+                        speed=380 if effect == "mega" else 220)
+        if d["color"] is not None:            # se ha convertido en un orbe de color
+            new = S.PALETTE[d["color"] % len(S.PALETTE)]
+            self._burst(*self._cell_center(*d["cell"]), new, count=12, speed=160)
+        if d["points"]:
+            cx, cy = self._cell_center(*d["cell"])
+            self.floaters.append([f"+{d['points']}", cx, cy, 0.9])
+        self._apply_moves(d["moves"], cleared=set(d["cells"]))
+        self.best = max(self.best, self.game.score)
+        self._queue_banner([(t("surprise.title"), self.bonus_font, S.SURPRISE_ORB),
+                            (t(f"surprise.{effect}"), self.hud, S.ACCENT)], 1.5)
+
+    def _queue_banner(self, lines, life, avoid=None):
+        """Encola un aviso: ``lines`` = [(texto, fuente, color), ...] durante ``life`` segundos.
+        Si se indica la celda ``avoid``, el aviso se coloca lejos de ella para no taparla."""
+        y = S.BOARD_Y + S.BOARD_H // 2
+        if avoid is not None:
+            cell_y = self._cell_center(*avoid)[1]
+            if abs(cell_y - y) < 110:     # el orbe está cerca del centro: arriba o abajo
+                y = S.BOARD_Y + S.BOARD_H // 5 if cell_y > y else S.BOARD_Y + S.BOARD_H * 4 // 5
+        self.banners.append([lines, life, y])
 
     def _bonus_banner(self, title, color, bonus):
         lines = [(part, self.bonus_font, color) for part in title.split("|")]
@@ -482,18 +515,18 @@ class GameScene(Scene):
             if ev.kind == "clear":
                 color = S.PALETTE[d["color"] % len(S.PALETTE)]
                 for r, c in d["cells"]:
-                    cx, cy = self._cell_center(r, c)
-                    for _ in range(6):
-                        ang = self.rng.uniform(0, math.tau)
-                        speed = self.rng.uniform(60, 220)
-                        self.particles.append([cx, cy, math.cos(ang) * speed,
-                                               math.sin(ang) * speed - 80,
-                                               self.rng.uniform(0.35, 0.7), color])
+                    self._burst(*self._cell_center(r, c), color)
                 mx = sum(self._cell_center(r, c)[0] for r, c in d["cells"]) / len(d["cells"])
                 my = sum(self._cell_center(r, c)[1] for r, c in d["cells"]) / len(d["cells"])
                 self.floaters.append([f"+{d['points']}", mx, my, 0.9])
                 self._apply_moves(d["moves"], cleared=set(d["cells"]))
                 self.best = max(self.best, self.game.score)
+            elif ev.kind == "surprise_spawn":
+                self._burst(*self._cell_center(*d["cell"]), S.SURPRISE_ORB, count=14)
+                self._queue_banner([(t("surprise.spawn"), self.bonus_font, S.SURPRISE_ORB)], 1.4,
+                                   avoid=d["cell"])
+            elif ev.kind == "surprise":
+                self._on_surprise(d)
             elif ev.kind == "color_clear":
                 name = t(f"color.{d['color'] % len(S.PALETTE)}")
                 self._bonus_banner(t("bonus.color", color=name),
@@ -608,7 +641,7 @@ class GameScene(Scene):
 
         self._draw_hud(surf, hover_info)
         if self.banners:
-            self._draw_banner(surf, self.banners[0][0])
+            self._draw_banner(surf, self.banners[0][0], self.banners[0][2])
         if g.over:
             self._draw_over(surf)
 
@@ -686,12 +719,12 @@ class GameScene(Scene):
             layer.set_alpha(round(255 * self.links_alpha))
         surf.blit(layer, BOARD_RECT.topleft)
 
-    def _draw_banner(self, surf, lines):
+    def _draw_banner(self, surf, lines, y=S.BOARD_Y + S.BOARD_H // 2):
         """Aviso centrado sobre el tablero, con un panel translúcido para que se lea bien."""
         heights = [font.get_linesize() for _, font, _ in lines]
         width = max(font.size(text)[0] for text, font, _ in lines) + 40
         panel = pygame.Rect(0, 0, min(S.LOGICAL_W - 16, width), sum(heights) + 28)
-        panel.center = (S.LOGICAL_W // 2, S.BOARD_Y + S.BOARD_H // 2)
+        panel.center = (S.LOGICAL_W // 2, y)
         shade = pygame.Surface(panel.size, pygame.SRCALPHA)
         pygame.draw.rect(shade, (10, 12, 28, 215), shade.get_rect(), border_radius=16)
         pygame.draw.rect(shade, (*S.BUTTON_EDGE, 200), shade.get_rect(), width=2, border_radius=16)

@@ -34,6 +34,12 @@ GAME_MODES = ("classic", "fast", "surprise")
 # --- Ayuda visual sobre los orbes: ninguna, formas geométricas o runas nórdicas ---
 ASSIST_MODES = ("none", "geo", "runes")
 
+# --- Modo sorpresa: un orbe sorpresa al llegar a SURPRISE_FIRST_LEVEL y cada
+#     SURPRISE_EVERY niveles (4, 6, 8...). Al pulsarlo hace uno de 5 efectos al azar. ---
+SURPRISE_FIRST_LEVEL = 4
+SURPRISE_EVERY = 2
+SURPRISE_MEGA_DEPTH = 3          # anillos de orbes que destruye la mega explosión
+
 # --- Reglas ---
 MIN_GROUP = 3                    # orbes conectados mínimos para poder reventar
 POINTS_PER_PAIR = 10             # puntos = n * (n - 1) * POINTS_PER_PAIR
@@ -55,6 +61,8 @@ ACCENT = (150, 210, 255)
 BUTTON = (50, 60, 120)
 BUTTON_PRESSED = (28, 34, 72)     # botón mientras se mantiene pulsado
 BUTTON_EDGE = (120, 140, 230)
+SURPRISE_ORB = (236, 236, 242)   # orbe sorpresa: blanco con un "?" negro
+SURPRISE_INK = (18, 18, 24)
 GOLD = (255, 204, 51)            # amarillo dorado de la puntuación final (contraste ~12:1 sobre
 GOLD_OUTLINE = (60, 36, 0)       # el panel oscuro); el contorno lo mantiene legible sobre cualquier fondo
 OVER_PANEL = (10, 12, 28)        # panel de fin de partida
