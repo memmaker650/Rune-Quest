@@ -212,3 +212,20 @@ def test_links_appear_half_a_second_after_the_rain_lands(tmp_path):
         scene.update(dt)
     assert scene.links_alpha == 1.0
     print(f"lluvia en el suelo a {landed:.2f}s, enlaces a {shown:.2f}s")
+
+
+def test_record_stays_fixed_during_the_game_and_a_star_marks_a_new_one(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    app.db.add_score("Ana", 100, 1)
+    scene = GameScene(app, seed=1)
+    app.change_scene(scene)
+    assert not scene.is_new_record()
+    board = scene.game.board
+    r, c = next((r, c) for r in range(board.rows) for c in range(board.cols)
+                if len(board.group_at(r, c)) >= S.MIN_GROUP)
+    scene.game.score = 90
+    _click(app, *scene._cell_center(r, c))
+    app.run(max_frames=3)
+    assert scene.game.score > 100
+    assert scene.best == 100                     # el récord del marcador no se sustituye
+    assert scene.is_new_record()                 # pero se marca con la estrella

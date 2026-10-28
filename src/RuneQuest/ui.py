@@ -1,5 +1,7 @@
 """Utilidades de interfaz mínimas."""
 
+import math
+
 import pygame
 
 from . import settings as S
@@ -49,6 +51,19 @@ def draw_text_outlined(surf, font, text, color, outline, center, thickness=2):
                 surf.blit(shadow, rect.move(dx, dy))
     surf.blit(font.render(text, True, color), rect)
     return rect
+
+
+def draw_star(surf, center, radius, color, outline=None):
+    """Estrella de 5 puntas (la fuente por defecto no tiene el carácter ★)."""
+    cx, cy = center
+    points = []
+    for i in range(10):
+        r = radius if i % 2 == 0 else radius * 0.45
+        ang = math.radians(-90 + i * 36)
+        points.append((cx + r * math.cos(ang), cy + r * math.sin(ang)))
+    pygame.draw.polygon(surf, color, points)
+    if outline is not None:
+        pygame.draw.polygon(surf, outline, points, 2)
 
 
 class Button:

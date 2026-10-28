@@ -15,7 +15,7 @@ from .board import SURPRISE, neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
-from .ui import (luminance, readable, Button, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
+from .ui import (draw_star, luminance, readable, Button, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
                  draw_text_outlined)
 
 log = logging.getLogger(__name__)
@@ -378,6 +378,7 @@ class GameScene(Scene):
         self.rain_falling = False
         self.links_wait = 0.0
         self.links_alpha = 1.0       # 0 = ocultos, 1 = visibles
+        # Récord previo a esta partida: no cambia mientras se juega (al superarlo sale una estrella).
         self.best = app.db.best_score()
         self.hud = pygame.font.Font(None, 28)
         self.small = pygame.font.Font(None, 22)
@@ -490,7 +491,6 @@ class GameScene(Scene):
             cx, cy = self._cell_center(*d["cell"])
             self.floaters.append([f"+{d['points']}", cx, cy, 0.9])
         self._apply_moves(d["moves"], cleared=set(d["cells"]))
-        self.best = max(self.best, self.game.score)
         self._queue_banner([(t("surprise.title"), self.bonus_font, S.SURPRISE_ORB),
                             (t(f"surprise.{effect}"), self.hud, S.ACCENT)], 1.5)
 
@@ -520,7 +520,6 @@ class GameScene(Scene):
                 my = sum(self._cell_center(r, c)[1] for r, c in d["cells"]) / len(d["cells"])
                 self.floaters.append([f"+{d['points']}", mx, my, 0.9])
                 self._apply_moves(d["moves"], cleared=set(d["cells"]))
-                self.best = max(self.best, self.game.score)
             elif ev.kind == "surprise_spawn":
                 self._burst(*self._cell_center(*d["cell"]), S.SURPRISE_ORB, count=14)
                 self._queue_banner([(t("surprise.spawn"), self.bonus_font, S.SURPRISE_ORB)], 1.4,
@@ -735,9 +734,16 @@ class GameScene(Scene):
             draw_text(surf, font, text, color, center=(S.LOGICAL_W // 2, y + h // 2))
             y += h
 
+    def is_new_record(self) -> bool:
+        """La puntuación de esta partida supera el récord que había al empezarla."""
+        return self.game.score > self.best
+
     def _draw_hud(self, surf, hover_info):
         g = self.game
-        draw_text(surf, self.hud, t("game.points", score=g.score), S.WHITE, topleft=(12, 12))
+        points = draw_text(surf, self.hud, t("game.points", score=g.score), S.WHITE,
+                           topleft=(12, 12))
+        if self.is_new_record():
+            draw_star(surf, (points.right + 14, points.centery), 10, S.GOLD, S.GOLD_OUTLINE)
         draw_text(surf, self.hud, t("game.level", level=g.level), S.WHITE,
                   topright=(S.LOGICAL_W - 12, 12))
         # 2ª línea: récord y siguiente nivel
@@ -773,7 +779,7 @@ class GameScene(Scene):
         draw_text(surf, self.hud, t("over.level", level=g.level), S.WHITE, center=(cx, 397))
         draw_text(surf, self.hud, t("over.best_combo", count=g.best_chain), S.WHITE,
                   center=(cx, 430))
-        if g.score and g.score >= self.best:
+        if self.is_new_record():
             draw_text(surf, self.hud, t("over.new_record"), S.BUTTON_EDGE, center=(cx, 470))
         if self.over_t > 0.6:
             draw_text(surf, self.small, t("over.back"), S.WHITE, center=(cx, 510))
