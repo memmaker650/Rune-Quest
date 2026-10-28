@@ -2,11 +2,13 @@
 
 import logging
 import platform
+import sqlite3
 import sys
 
 import pygame
 
-from . import __version__
+from . import __version__, gamecenter, translations
+from .audio import Audio
 from . import settings as S
 from .db import Database, default_db_path
 from .display import Display
@@ -23,12 +25,28 @@ class App:
         passed, failed = pygame.init()
         if failed:
             log.warning("pygame.init(): %d módulos no se pudieron inicializar", failed)
-        pygame.display.set_caption("Orbes")
+        pygame.display.set_caption("Rune Quest")
         self.display = Display()
         self.db = Database(db_path or default_db_path())
+        translations.load()
+        translations.set_language(self.db.get_setting("language", translations.current().code))
+        self.audio = Audio(fx_enabled=self.db.get_setting("sfx", "1") == "1",
+                           music_enabled=self.db.get_setting("music", "1") == "1")
+        self.audio.start_music()
+        self.gamecenter = gamecenter.create()
+        self.gamecenter.on_authenticated = self._on_gamecenter_login
+        self.gamecenter.authenticate()
         self.clock = pygame.time.Clock()
         self.running = True
         self.scene = MenuScene(self)
+
+    def _on_gamecenter_login(self, gc):
+        """Usa el nombre de Game Center para las puntuaciones locales y sube el récord local."""
+        try:
+            self.db.set_setting("player_name", gc.player_name)
+        except sqlite3.Error:
+            log.error("No se pudo guardar el nombre de Game Center como nombre del jugador")
+        gc.submit_score(self.db.best_score())
 
     def change_scene(self, scene):
         log.info("Cambio de escena: %s -> %s",
@@ -64,7 +82,6 @@ class App:
             log.info("Cerrando la aplicación tras %d frames", frames)
             self.db.close()
             pygame.quit()
-
 
 def main():
     setup_logging()

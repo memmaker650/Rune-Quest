@@ -1,31 +1,55 @@
 """Constantes del juego. Todo en coordenadas lógicas (se escala a la ventana)."""
 
+# --- Carpetas de usuario (datos y logs) ---
+APP_NAME = "RuneQuest"
+LEGACY_APP_NAME = "RuneQuest"         # carpetas de versiones anteriores (se migra la BDD)
+
+# --- Game Center: debe coincidir con el ID de la clasificación en App Store Connect ---
+GAMECENTER_LEADERBOARD_ID = "runequest_highscores"
+
 # --- Tablero ---
 COLS = 8
-ROWS = 12
+ROWS = 14
 CELL = 45
 BOARD_X = 0
 BOARD_Y = 100
 BOARD_W = COLS * CELL            # 360
-BOARD_H = ROWS * CELL            # 540
+COL_SHIFT = CELL // 2            # las columnas impares están desplazadas media celda hacia abajo
+BOARD_H = ROWS * CELL + COL_SHIFT  # 652
 
 # --- Pantalla lógica (relación ~ iPhone en vertical) ---
 LOGICAL_W = BOARD_W
 LOGICAL_H = 760
 FPS = 60
+ANIM_RATE = 12.0                 # velocidad con que los orbes llegan a su sitio (mayor = más rápido)
+LINK_ALPHA = 135                 # opacidad (0-255) de los enlaces entre orbes de un grupo
+LINK_WIDTH = int(CELL * 0.62)    # grosor de esos enlaces
+LINKS_DELAY_AFTER_RAIN = 0.5     # segundos sin enlaces tras terminar de caer la lluvia
+LINKS_FADE_IN = 0.25             # y luego aparecen con este fundido (segundos)
+RAIN_ANIM_RATE = 6.0             # la lluvia de orbes cae a la mitad de velocidad
+
+# --- Modos de juego (de momento todos usan las mismas reglas) ---
+GAME_MODES = ("classic", "fast", "surprise")
+
+# --- Ayuda visual sobre los orbes: ninguna, formas geométricas o runas nórdicas ---
+ASSIST_MODES = ("none", "geo", "runes")
+
+# --- Modo sorpresa: un orbe sorpresa al llegar a SURPRISE_FIRST_LEVEL y cada
+#     SURPRISE_EVERY niveles (4, 6, 8...). Al pulsarlo hace uno de 5 efectos al azar. ---
+SURPRISE_FIRST_LEVEL = 4
+SURPRISE_EVERY = 2
+SURPRISE_MEGA_DEPTH = 3          # anillos de orbes que destruye la mega explosión
 
 # --- Reglas ---
-MIN_GROUP = 2                    # orbes conectados mínimos para poder reventar
+MIN_GROUP = 3                    # orbes conectados mínimos para poder reventar
 POINTS_PER_PAIR = 10             # puntos = n * (n - 1) * POINTS_PER_PAIR
-LEVEL_BONUS = 500                # bonus * nivel al vaciar el tablero
+COLOR_CLEAR_BONUS = 5000         # eliminar todos los orbes de un color
+BOARD_CLEAR_BONUS = 10000        # dejar el tablero sin ningún orbe
+LEVEL_POINTS = 1000              # nivel n -> n+1 al llegar a LEVEL_POINTS * n*(n+1)/2 puntos
 
 # --- Dificultad (ver game.level_params) ---
-START_COLORS = 3
+START_COLORS = 3                 # colores de los orbes nuevos en el nivel 1
 MAX_COLORS = 6
-START_ROWS = 4                   # filas iniciales del nivel 1
-MAX_START_ROWS = ROWS - 4
-START_PUSH_INTERVAL = 5          # toques entre filas nuevas en el nivel 1
-MIN_PUSH_INTERVAL = 2
 
 # --- Colores ---
 BG = (18, 20, 40)
@@ -35,7 +59,13 @@ WHITE = (240, 240, 250)
 BLACK = (0, 0, 0)
 ACCENT = (150, 210, 255)
 BUTTON = (50, 60, 120)
+BUTTON_PRESSED = (28, 34, 72)     # botón mientras se mantiene pulsado
 BUTTON_EDGE = (120, 140, 230)
+SURPRISE_ORB = (236, 236, 242)   # orbe sorpresa: blanco con un "?" negro
+SURPRISE_INK = (18, 18, 24)
+GOLD = (255, 204, 51)            # amarillo dorado de la puntuación final (contraste ~12:1 sobre
+GOLD_OUTLINE = (60, 36, 0)       # el panel oscuro); el contorno lo mantiene legible sobre cualquier fondo
+OVER_PANEL = (10, 12, 28)        # panel de fin de partida
 
 PALETTE = [
     (232, 84, 84),     # 0 rojo

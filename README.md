@@ -58,9 +58,13 @@ briefcase dev                        # jugar en el escritorio
 Si ya tienes `pygame` (el clásico) instalado, desinstálalo: comparte el nombre de módulo con
 `pygame-ce` y no deben convivir.
 
-Los datos (`orbes.db`) se guardan en la carpeta de datos de usuario (`platformdirs`):
-`~/Library/Application Support/Orbes` en macOS, `%LOCALAPPDATA%\Orbes\Orbes` en Windows y el sandbox de la
+Los datos (`RuneQuest_database.db`) se guardan en la carpeta de datos de usuario (`platformdirs`):
+`~/Library/Application Support/RuneQuest` en macOS, `%LOCALAPPDATA%\Orbes\Orbes` en Windows y el sandbox de la
 app en iOS.
+
+Ubicación fichero de Log: 
+Base de datos 	-->		~/Library/Application Support/RuneQuest/RuneQuest_database.db
+Logs 			-->		~/Library/Logs/RuneQuest/RuneQuest_20261016.log
 
 ## Tests
 
@@ -113,6 +117,54 @@ podido comprobar que exista**. Antes de invertir más en el juego:
    compilados para iOS) o busca una wheel ya construida por la comunidad.
 3. Plan B: sustituir solo la capa de dibujo y entrada (`display.py`, `controls.py`, `sprites.py`,
    `scenes.py`). La lógica (`board.py`, `game.py`, `db.py`) no depende de pygame y se reutiliza tal cual.
+
+## Game Center (iOS y macOS)
+
+El código está en `src/RuneQuest/gamecenter.py` (GameKit vía `rubicon-objc`). Al arrancar inicia
+sesión en Game Center; con sesión usa el nombre del jugador para las puntuaciones locales, envía
+cada partida terminada a la clasificación y muestra "Ver en Game Center" en Puntuaciones. Sin
+Game Center (Windows, app sin firmar, sin sesión…) el juego funciona igual y lo registra en el log.
+Se puede desactivar con `RUNEQUEST_GAMECENTER=0`.
+
+Para que funcione de verdad hace falta (una vez):
+
+1. **Cuenta de Apple Developer** y un App ID con el bundle `com.SkullWithGasMask.RuneQuest`
+   y la capacidad *Game Center* activada.
+2. **App Store Connect**: crear la app con ese bundle, activar Game Center y crear una
+   clasificación con ID `runequest_highscores` (o cambiar `GAMECENTER_LEADERBOARD_ID` en
+   `settings.py`).
+3. **Firmar con tu equipo y activar la capacidad** en el proyecto de Xcode:
+   - iOS: `briefcase create iOS`, abrir `build/RuneQuest/ios/xcode/RuneQuest.xcodeproj` →
+     *Signing & Capabilities* → elegir el *Team* y añadir *Game Center*.
+   - macOS: `briefcase create macOS Xcode` y lo mismo en `build/RuneQuest/macos/xcode`.
+   El entitlement `com.apple.developer.game-center` es restringido: con firma ad-hoc la app no
+   arranca, por eso no se declara en `pyproject.toml`. Ojo: `briefcase create` regenera el
+   proyecto de Xcode y hay que volver a añadir la capacidad.
+4. Probar con una cuenta *Sandbox* de Game Center (en el simulador o en el dispositivo).
+
+Con `briefcase dev` GameKit responde que "Game Center no reconoce esta aplicación" (código 15):
+es lo esperado sin los pasos anteriores.
+
+**App Store Connect** es la web de Apple para gestionar las apps que publicas en el App Store. Desde ahí:
+
+Das de alta la app (nombre, bundle ID, ficha de la tienda, capturas, precio).
+Configuras Game Center: activarlo para la app, crear clasificaciones (como runequest_highscores) y logros.
+Subes versiones y las distribuyes a testers con TestFlight.
+Envías la app a revisión de Apple y la publicas.
+Consultas ventas, descargas, informes de fallos y valoraciones.
+
+Cómo se entra:
+
+Ve a https://appstoreconnect.apple.com e inicia sesión con tu Apple ID.
+Para poder usarla necesitas estar en el Apple Developer Program, que es de pago (99 USD/año, o el equivalente en euros). Te inscribes en https://developer.apple.com/programs/ con el mismo Apple ID. Como particular, la aprobación suele tardar entre unas horas y un par de días.
+Una vez aprobado, al entrar verás el panel con secciones como Apps, TestFlight y Usuarios y acceso. También existe la app App Store Connect para iPhone, útil para consultar cosas, aunque la configuración se hace mejor en la web.
+
+Relación con lo que hemos hecho:
+
+El App ID (com.SkullWithGasMask.RuneQuest) con la capacidad Game Center se crea en otra web, https://developer.apple.com/account, en Certificates, Identifiers & Profiles.
+Después, en App Store Connect: Apps → + → Nueva app, eliges ese bundle ID y, dentro de la app, en la sección Game Center, creas la clasificación y los logros.
+
+Sin la membresía de pago puedes ejecutar la app en tu iPhone con un Apple ID gratuito desde Xcode (con limitaciones). Pero no puedes usar Game Center ni App Store Connect, porque Game Center requiere que la app esté dada de alta ahí.
 
 ## Qué falta (hoja de ruta)
 

@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [tool.briefcase]
 project_name = "RuneQuest"
-bundle = "com.example"          # Cambia por tu dominio inverso
+bundle = "com.SkullWithGasMask"          
 version = "0.1.0"
 url = "https://example.com/RuneQuest"
 license.file = "LICENSE"
-author = "Tu Nombre"
-author_email = "tu@email.com"
+author = "Jorge Vega Sánchez"
+author_email = "memmaker650@gmail.com"
 
 [tool.briefcase.app.RuneQuest]
 formal_name = "Rune Quest"
@@ -25,13 +25,19 @@ test_requires = ["pytest"]
 
 [tool.briefcase.app.RuneQuest.macOS]
 universal_build = true
-requires = []
+# rubicon-objc: puente con GameKit para Game Center (ver src/RuneQuest/gamecenter.py).
+requires = ["rubicon-objc"]
+# Game Center necesita el entitlement "com.apple.developer.game-center", que es restringido:
+# solo funciona firmando con tu equipo de Apple y un perfil de aprovisionamiento (ver README).
+# Con firma ad-hoc la app no arrancaría, por eso no se declara aquí.
 
 [tool.briefcase.app.RuneQuest.iOS]
 # OJO: pygame no es un objetivo oficial de Briefcase en iOS.
 # Necesitarás una rueda (wheel) de pygame-ce compilada para iOS
 # (ver README, sección "Riesgo iOS").
-requires = []
+# rubicon-objc: puente con GameKit para Game Center (ver src/RuneQuest/gamecenter.py).
+# La capacidad "Game Center" se activa en Xcode (Signing & Capabilities); ver README.
+requires = ["rubicon-objc"]
 
 [tool.briefcase.app.RuneQuest.windows]
 # pygame-ce publica ruedas para Windows (x64/ARM64): no hace falta nada más.

@@ -11,7 +11,6 @@ log = logging.getLogger(__name__)
 
 FINGER_EVENTS = (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION)
 
-
 class Display:
     def __init__(self):
         if sys.platform == "ios":
