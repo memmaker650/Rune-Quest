@@ -49,10 +49,12 @@ LEVEL_POINTS = 1000              # nivel n -> n+1 al llegar a LEVEL_POINTS * n*(
 
 # --- Dificultad (ver game.level_params) ---
 START_COLORS = 3                 # colores de los orbes nuevos en el nivel 1
-# Nivel en que se añade cada color nuevo (amarillo, violeta, turquesa, rosa, negro, naranja,
-# marrón): cada vez cuesta más llegar al siguiente.
-COLOR_UNLOCK_LEVELS = (5, 8, 12, 17, 23, 30, 38)
-MAX_COLORS = START_COLORS + len(COLOR_UNLOCK_LEVELS)     # 10
+# Modos Clásico y Sorpresa: nivel en que se añade cada color nuevo (amarillo, violeta, turquesa,
+# rosa, negro, naranja, marrón, blanco, verde oscuro, gris); cada salto es uno más largo.
+# Modo Rápido: no va por niveles, cada lluvia de orbes añade el siguiente color.
+COLOR_UNLOCK_LEVELS = (5, 8, 12, 17, 23, 30, 38, 47, 57, 68)
+MAX_COLORS = START_COLORS + len(COLOR_UNLOCK_LEVELS)     # 13
+FAST_MIN_NEW_COLOR_ORBS = 3      # modo Rápido: orbes del color nuevo que trae, como mínimo, cada lluvia
 
 # --- Colores ---
 BG = (18, 20, 40)
@@ -72,7 +74,7 @@ OVER_PANEL = (10, 12, 28)        # panel de fin de partida
 
 # Rojo, azul y verde son los colores iniciales. Los demás se eligieron, en este orden, como el
 # tono de su familia más distinto (ΔE2000) de todos los anteriores: la pareja más parecida de
-# los 10 (amarillo-naranja) está a ΔE 24,8, más que la peor de la paleta antigua de 6 (24,3).
+# los 13 (amarillo-naranja) está a ΔE 24,8, más que la peor de la paleta antigua de 6 (24,3).
 PALETTE = [
     (232, 84, 84),     # 0 rojo
     (84, 144, 240),    # 1 azul
@@ -84,5 +86,8 @@ PALETTE = [
     (31, 24, 24),      # 7 negro      (nivel 23): lleva borde claro para verse sobre el fondo
     (245, 129, 12),    # 8 naranja    (nivel 30)
     (128, 83, 32),     # 9 marrón     (nivel 38)
+    (255, 251, 247),   # 10 blanco    (nivel 47): el orbe sorpresa se distingue por su anillo dorado
+    (19, 97, 81),      # 11 verde oscuro (nivel 57)
+    (128, 128, 128),   # 12 gris      (nivel 68)
 ]
 MENU_ORBS = 6                    # orbes decorativos del menú (los 6 primeros colores)

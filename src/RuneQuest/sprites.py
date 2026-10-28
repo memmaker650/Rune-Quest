@@ -7,7 +7,7 @@ import pygame
 from . import settings as S
 from .board import SURPRISE
 from .runes import draw_rune, rune_for_color
-from .ui import luminance
+from .ui import contrast, luminance
 
 log = logging.getLogger(__name__)
 
@@ -41,9 +41,16 @@ def _glyph(surf, color_idx, c, r, ink):
         pygame.draw.rect(surf, ink, (c - k, c - k, 2 * k, 2 * k), 3)
     elif color_idx == 8:                                  # triángulo invertido
         pygame.draw.polygon(surf, ink, [(c, c + k + 1), (c - k - 1, c - k), (c + k + 1, c - k)])
-    else:                                                 # dos barras
+    elif color_idx == 9:                                  # dos barras
         pygame.draw.rect(surf, ink, (c - k, c - k, k * 2 // 3, 2 * k))
         pygame.draw.rect(surf, ink, (c + k - k * 2 // 3, c - k, k * 2 // 3, 2 * k))
+    elif color_idx == 10:                                 # triángulo hueco
+        pygame.draw.polygon(surf, ink, [(c, c - k - 1), (c - k - 1, c + k), (c + k + 1, c + k)], 3)
+    elif color_idx == 11:                                 # barra horizontal gruesa
+        pygame.draw.rect(surf, ink, (c - k, c - k // 3, 2 * k, 2 * (k // 3) + 1))
+    else:                                                 # tres puntos
+        for dx in (-k, 0, k):
+            pygame.draw.circle(surf, ink, (c + dx, c), max(2, k // 3))
 
 
 def _surprise_sprite(size: int):
@@ -51,8 +58,8 @@ def _surprise_sprite(size: int):
     sprite = pygame.Surface((size, size), pygame.SRCALPHA)
     c = size // 2
     r = size // 2 - 3
-    pygame.draw.circle(sprite, _shade(S.SURPRISE_ORB, 0.6), (c, c), r + 1)
-    pygame.draw.circle(sprite, S.SURPRISE_ORB, (c, c), r - 1)
+    pygame.draw.circle(sprite, S.GOLD, (c, c), r + 1)          # anillo dorado: no se confunde
+    pygame.draw.circle(sprite, S.SURPRISE_ORB, (c, c), r - 2)  # con un orbe blanco normal
     pygame.draw.circle(sprite, (255, 255, 255), (c - r // 3, c - r // 3), max(2, r // 4))
     mark = pygame.font.Font(None, int(size * 0.95)).render("?", True, S.SURPRISE_INK)
     sprite.blit(mark, mark.get_rect(center=(c, c + 2)))
@@ -83,15 +90,16 @@ def orb_sprite(color_idx: int, size: int = S.CELL, assist: str = "none"):
     dark = luminance(base) < 0.05                 # negro: sin esto no se ve sobre el fondo
     rim = (150, 150, 168) if dark else _shade(base, 0.55)
     shine = (120, 120, 136) if dark else _shade(base, 1.0 + 0.45)
-    ink = (205, 205, 215) if luminance(base) < 0.15 else None   # marcas claras en tonos oscuros
+    # Tinta de la marca de ayuda: la clara o la oscura, la que más contraste con este color.
+    ink = max(((215, 215, 225), _shade(base, 0.3)), key=lambda c: contrast(c, base))
     pygame.draw.circle(sprite, rim, (c, c), r + 1)
     pygame.draw.circle(sprite, base, (c, c), r - 1)
     pygame.draw.circle(sprite, shine, (c - r // 3, c - r // 3), max(2, r // 4))
     if assist == "geo":
-        _glyph(sprite, color_idx % len(S.PALETTE), c, r, ink or _shade(base, 0.45))
+        _glyph(sprite, color_idx % len(S.PALETTE), c, r, ink)
     elif assist == "runes":
         draw_rune(sprite, rune_for_color(color_idx % len(S.PALETTE)), (c, c), r * 0.52,
-                  ink or _shade(base, 0.4), max(2, size // 15))
+                  ink, max(2, size // 15))
     elif assist != "none":
         log.warning("Modo de ayuda desconocido %r; se dibuja sin ayuda", assist)
     _cache[key] = sprite

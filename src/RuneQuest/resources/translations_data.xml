@@ -38,6 +38,7 @@
     <text key="game.best_chain">Mejor cadena {count}</text>
     <text key="game.next_level">Siguiente nivel {score}</text>
     <text key="game.rain">¡Lluvia de orbes!</text>
+    <text key="game.new_color">¡Nuevo color: {color}!</text>
     <text key="surprise.spawn">¡Orbe sorpresa!</text>
     <text key="surprise.title">¡Sorpresa!</text>
     <text key="surprise.vanish">El orbe desaparece</text>
@@ -55,6 +56,9 @@
     <text key="color.7">negro</text>
     <text key="color.8">naranja</text>
     <text key="color.9">marrón</text>
+    <text key="color.10">blanco</text>
+    <text key="color.11">verde oscuro</text>
+    <text key="color.12">gris</text>
     <text key="bonus.color">Color {color}|¡limpiado!</text>
     <text key="bonus.board">¡Pantalla|limpia!</text>
     <text key="bonus.points">+{points} puntos de bonus</text>
@@ -101,6 +105,7 @@
     <text key="game.best_chain">Best chain {count}</text>
     <text key="game.next_level">Next level {score}</text>
     <text key="game.rain">Orb shower!</text>
+    <text key="game.new_color">New colour: {color}!</text>
     <text key="surprise.spawn">Surprise orb!</text>
     <text key="surprise.title">Surprise!</text>
     <text key="surprise.vanish">The orb vanishes</text>
@@ -118,6 +123,9 @@
     <text key="color.7">Black</text>
     <text key="color.8">Orange</text>
     <text key="color.9">Brown</text>
+    <text key="color.10">White</text>
+    <text key="color.11">Dark green</text>
+    <text key="color.12">Grey</text>
     <text key="bonus.color">{color}|cleared!</text>
     <text key="bonus.board">Board|cleared!</text>
     <text key="bonus.points">+{points} bonus points</text>
@@ -164,6 +172,7 @@
     <text key="game.best_chain">Meilleure chaîne {count}</text>
     <text key="game.next_level">Niveau suivant {score}</text>
     <text key="game.rain">Pluie d'orbes !</text>
+    <text key="game.new_color">Nouvelle couleur : {color} !</text>
     <text key="surprise.spawn">Orbe surprise !</text>
     <text key="surprise.title">Surprise !</text>
     <text key="surprise.vanish">L'orbe disparaît</text>
@@ -181,6 +190,9 @@
     <text key="color.7">noire</text>
     <text key="color.8">orange</text>
     <text key="color.9">marron</text>
+    <text key="color.10">blanche</text>
+    <text key="color.11">vert foncé</text>
+    <text key="color.12">grise</text>
     <text key="bonus.color">Couleur {color}|éliminée !</text>
     <text key="bonus.board">Écran|nettoyé !</text>
     <text key="bonus.points">+{points} points bonus</text>

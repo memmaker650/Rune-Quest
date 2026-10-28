@@ -65,7 +65,7 @@ class Game:
         self.events: list[Event] = []
         p = level_params(level)
         log.info("Nueva partida (modo %s) en el nivel %d: %s", mode, level, p)
-        self.board = Board(n_colors=p["colors"], rng=self.rng)
+        self.board = Board(n_colors=self.color_count(), rng=self.rng)
         self.board.fill()
 
     # --- guardar / restaurar ---
@@ -89,6 +89,7 @@ class Game:
         g.score = int(state["score"])
         g.taps = int(state.get("taps", 0))
         g.rains = int(state.get("rains", 0))
+        g.board.n_colors = g.color_count()
         g.best_chain = int(state.get("best_chain", 0))
         grid = [[EMPTY] * g.board.cols for _ in range(g.board.rows)]
         for r, c, color in state["balls"]:
@@ -223,10 +224,24 @@ class Game:
             log.info("¡Tablero limpio!: +%d", S.BOARD_CLEAR_BONUS)
             self.events.append(Event("board_clear", {"bonus": S.BOARD_CLEAR_BONUS}))
 
+    def color_count(self) -> int:
+        """Colores de los orbes que caen. Rápido: uno más por cada lluvia; los demás modos:
+        según el nivel (``settings.COLOR_UNLOCK_LEVELS``)."""
+        if self.mode == "fast":
+            return min(S.MAX_COLORS, S.START_COLORS + self.rains)
+        return level_params(self.level)["colors"]
+
     def _rain(self) -> None:
         self.rains += 1
         log.info("Sin jugadas posibles: lluvia de orbes n.º %d", self.rains)
-        self.events.append(Event("rain", {"moves": self.board.rain()}))
+        before = self.board.n_colors
+        self.board.n_colors = self.color_count()
+        moves = self.board.rain()
+        new_color = None
+        if self.board.n_colors > before:              # modo Rápido: esta lluvia trae un color
+            new_color = self.board.n_colors - 1
+            self._show_new_color(new_color, [dst for _, dst in moves])
+        self.events.append(Event("rain", {"moves": moves, "new_color": new_color}))
         # Sin grupos tras la lluvia se acaba, salvo que quede el orbe sorpresa por pulsar.
         if not self.board.has_moves() and self.board.find(SURPRISE) is None:
             self.over = True
@@ -234,10 +249,19 @@ class Game:
                      self.score, self.level, self.best_chain)
             self.events.append(Event("over", {"score": self.score, "level": self.level}))
 
+    def _show_new_color(self, color: int, rained: list) -> None:
+        """Asegura que la lluvia traiga al menos FAST_MIN_NEW_COLOR_ORBS orbes del color nuevo."""
+        have = [cell for cell in rained if self.board.get(*cell) == color]
+        others = [cell for cell in rained if self.board.get(*cell) != color]
+        missing = min(S.FAST_MIN_NEW_COLOR_ORBS - len(have), len(others))
+        for r, c in self.rng.sample(others, max(0, missing)):
+            self.board.grid[r][c] = color
+        log.info("Lluvia n.º %d: color nuevo %d", self.rains, color)
+
     def _level_up(self) -> None:
         self.level += 1
         p = level_params(self.level)
-        self.board.n_colors = p["colors"]
+        self.board.n_colors = self.color_count()
         log.info("Subida al nivel %d con %d puntos: %s", self.level, self.score, p)
         self.events.append(Event("level", {"level": self.level}))
         self._maybe_spawn_surprise()

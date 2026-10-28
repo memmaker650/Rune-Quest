@@ -1,12 +1,12 @@
-"""Las 12 runas nórdicas (Futhark antiguo) que se pueden dibujar sobre los orbes.
+"""Runas nórdicas (Futhark antiguo) que se pueden dibujar sobre los orbes.
 
 Cada runa se define como trazos rectos (así se tallaban), en coordenadas normalizadas:
 x de -1 a 1 (izquierda a derecha) e y de -1 a 1 (arriba a abajo). Se dibujan con líneas,
 porque la fuente por defecto de pygame no tiene los caracteres rúnicos de Unicode.
 
 El orden importa: el color ``i`` de los orbes usa la runa ``RUNES[i]``. El juego usa hasta 10
-colores (``settings.MAX_COLORS``), así que se usan las diez primeras; Wunjo e Isa quedan de
-reserva (Wunjo se parece mucho a Thurisaz, por eso es de las últimas).
+colores; con 13 (``settings.MAX_COLORS``) se usan las trece primeras. Wunjo queda de reserva
+porque se parece mucho a Thurisaz.
 """
 
 from dataclasses import dataclass
@@ -65,11 +65,17 @@ RUNES: tuple[Rune, ...] = (
     Rune("Kenaz", "ᚲ", "antorcha", (
         ((0.45, -0.75), (-0.4, 0.0), (0.45, 0.75)),
     )),
-    Rune("Wunjo", "ᚹ", "alegría", (
-        ((-0.4, 1.0), (-0.4, -1.0), (0.45, -0.5), (-0.4, 0.0)),
+    Rune("Sowilo", "ᛊ", "sol", (
+        ((0.4, -1.0), (-0.35, -0.3), (0.35, 0.3), (-0.4, 1.0)),
+    )),
+    Rune("Laguz", "ᛚ", "agua", (
+        ((-0.35, 1.0), (-0.35, -1.0), (0.45, -0.35)),
     )),
     Rune("Isa", "ᛁ", "hielo", (
         ((0.0, -1.0), (0.0, 1.0)),
+    )),
+    Rune("Wunjo", "ᚹ", "alegría", (
+        ((-0.4, 1.0), (-0.4, -1.0), (0.45, -0.5), (-0.4, 0.0)),
     )),
 )
 

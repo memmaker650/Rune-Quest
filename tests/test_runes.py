@@ -7,9 +7,9 @@ from RuneQuest.scenes import GameScene, assist_mode
 from RuneQuest.sprites import orb_sprite
 
 
-def test_twelve_distinct_runes_inside_the_box():
-    assert len(RUNES) == 12
-    assert len({r.name for r in RUNES}) == 12 and len({r.char for r in RUNES}) == 12
+def test_distinct_runes_inside_the_box_one_per_colour():
+    assert len(RUNES) >= S.MAX_COLORS
+    assert len({r.name for r in RUNES}) == len(RUNES) == len({r.char for r in RUNES})
     for rune in RUNES:
         assert rune.strokes
         for stroke in rune.strokes:

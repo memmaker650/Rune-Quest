@@ -536,7 +536,12 @@ class GameScene(Scene):
                 self._apply_moves(d["moves"], rate=S.RAIN_ANIM_RATE)
                 self.rain_falling = True
                 self.links_alpha = 0.0
-                self._queue_banner([(t("game.rain"), self.big, S.ACCENT)], 1.2)
+                lines = [(t("game.rain"), self.big, S.ACCENT)]
+                if d.get("new_color") is not None:       # modo Rápido: llega un color nuevo
+                    new = d["new_color"]
+                    lines.append((t("game.new_color", color=t(f"color.{new}")), self.hud,
+                                  readable(S.PALETTE[new % len(S.PALETTE)])))
+                self._queue_banner(lines, 1.8 if len(lines) > 1 else 1.2)
             elif ev.kind == "level":
                 self._queue_banner([(t("game.level_banner", level=d["level"]), self.big,
                                      S.ACCENT)], 1.6)
