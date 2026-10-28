@@ -388,8 +388,9 @@ class ScoresScene(ButtonScene):
                       center=(S.LOGICAL_W // 2, 200))
         for i, row in enumerate(self.rows):
             y = 134 + i * 31
-            draw_text(surf, self.font, f"{i + 1:>2}.  {row['player']}", S.WHITE, topleft=(24, y))
-            draw_text(surf, self.font, format_points(row["score"]), S.GOLD if i == 0 else S.WHITE,
+            color = S.GOLD if i == 0 else S.WHITE      # el primer puesto, en dorado
+            draw_text(surf, self.font, f"{i + 1:>2}.  {row['player']}", color, topleft=(24, y))
+            draw_text(surf, self.font, format_points(row["score"]), color,
                       topright=(270, y))
             draw_text(surf, self.font, t("scores.level", level=row["level"]), S.BUTTON_EDGE,
                       topright=(S.LOGICAL_W - 20, y))
