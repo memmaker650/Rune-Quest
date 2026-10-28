@@ -27,7 +27,7 @@ def test_settings_roundtrip_and_overwrite():
 
 def test_schema_version_is_set():
     db = Database(":memory:")
-    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 4
 
 
 def test_persists_on_disk(tmp_path):
@@ -64,7 +64,7 @@ def test_v1_database_gets_estado_partida_table(tmp_path):
     conn.execute("INSERT INTO scores (player, score, level) VALUES ('Ana', 10, 1)")
     conn.commit(); conn.close()
     db = Database(path)
-    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 4
     assert db.best_score() == 10                 # los datos v1 se conservan
     db.save_game(STATE)
     assert db.load_game() == STATE
@@ -92,3 +92,31 @@ def test_v2_saved_game_gets_classic_mode(tmp_path):
     conn.commit(); conn.close()
     db = Database(path)
     assert db.load_game()["mode"] == "classic"   # partidas guardadas antes de los modos
+
+
+def test_scores_are_kept_per_game_mode():
+    db = Database(":memory:")
+    for i in range(20):
+        db.add_score("C", 100 + i, 1, "classic")
+    db.add_score("R", 999, 4, "fast")
+    db.add_score("S", 50, 1, "surprise")
+    assert len(db.top_scores(15, mode="classic")) == 15
+    assert db.top_scores(15, mode="classic")[0]["score"] == 119
+    assert [r["player"] for r in db.top_scores(15, mode="fast")] == ["R"]
+    assert db.best_score("classic") == 119 and db.best_score("fast") == 999
+    assert db.best_score("surprise") == 50 and db.best_score() == 999
+
+
+def test_old_scores_become_classic(tmp_path):
+    import sqlite3
+    from RuneQuest.db import SCHEMA_V1, SCHEMA_V2, SCHEMA_V3
+
+    path = tmp_path / "v3.db"
+    conn = sqlite3.connect(path)
+    for schema in (SCHEMA_V1, SCHEMA_V2, SCHEMA_V3):
+        conn.executescript(schema)
+    conn.execute("INSERT INTO scores (player, score, level) VALUES ('Ana', 321, 2)")
+    conn.commit(); conn.close()
+    db = Database(path)
+    assert db.top_scores(mode="classic")[0]["player"] == "Ana"
+    assert db.best_score("fast") == 0

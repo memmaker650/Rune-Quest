@@ -5,7 +5,13 @@ APP_NAME = "RuneQuest"
 LEGACY_APP_NAME = "RuneQuest"         # carpetas de versiones anteriores (se migra la BDD)
 
 # --- Game Center: debe coincidir con el ID de la clasificación en App Store Connect ---
-GAMECENTER_LEADERBOARD_ID = "runequest_highscores"
+# Una clasificación por modo de juego.
+GAMECENTER_LEADERBOARDS = {
+    "classic": "runequest_classic",
+    "fast": "runequest_fast",
+    "surprise": "runequest_surprise",
+}
+TOP_SCORES = 15                  # puntuaciones que muestra la pantalla Puntuaciones (por modo)
 
 # --- Tablero ---
 COLS = 8

@@ -229,3 +229,32 @@ def test_record_stays_fixed_during_the_game_and_a_star_marks_a_new_one(tmp_path)
     assert scene.game.score > 100
     assert scene.best == 100                     # el récord del marcador no se sustituye
     assert scene.is_new_record()                 # pero se marca con la estrella
+
+
+def test_record_and_saved_score_are_per_mode(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    app.db.add_score("Ana", 5000, 3, "classic")
+    scene = GameScene(app, seed=1, mode="fast")
+    assert scene.best == 0                      # el récord de Clásico no cuenta en Rápido
+    scene.game.score = 10
+    assert scene.is_new_record()
+    scene._save_score()
+    assert app.db.best_score("fast") == 10 and app.db.best_score("classic") == 5000
+
+
+def test_scores_screen_tabs_switch_mode(tmp_path):
+    from RuneQuest.scenes import ScoresScene
+    app = App(db_path=tmp_path / "t.db")
+    for i in range(18):
+        app.db.add_score(f"C{i}", 100 + i, 1, "classic")
+    app.db.add_score("Rapida", 42, 1, "surprise")
+    scene = ScoresScene(app)
+    app.change_scene(scene)
+    assert scene.mode == "classic" and len(scene.rows) == S.TOP_SCORES
+    surprise_tab = scene.tabs.segments[2]
+    _tap(scene, surprise_tab.center)
+    assert app.scene is scene and scene.mode == "surprise"
+    assert [r["player"] for r in scene.rows] == ["Rapida"]
+    scene.draw(app.display.surface)
+    _tap(scene, (S.LOGICAL_W // 2, 600))        # fuera de los botones: vuelve al menú
+    assert isinstance(app.scene, MenuScene)

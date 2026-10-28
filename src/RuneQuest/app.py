@@ -46,7 +46,8 @@ class App:
             self.db.set_setting("player_name", gc.player_name)
         except sqlite3.Error:
             log.error("No se pudo guardar el nombre de Game Center como nombre del jugador")
-        gc.submit_score(self.db.best_score())
+        for mode in S.GAME_MODES:                 # un récord por modo, cada uno en su clasificación
+            gc.submit_score(self.db.best_score(mode), mode)
 
     def change_scene(self, scene):
         log.info("Cambio de escena: %s -> %s",

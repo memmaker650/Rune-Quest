@@ -18,6 +18,7 @@
     <text key="assist.geo">Geo</text>
     <text key="assist.runes">Runas</text>
     <text key="menu.record">Récord: {score}</text>
+    <text key="menu.record_mode">Récord ({mode}): {score}</text>
     <text key="menu.gc_player">Game Center: {name}</text>
     <text key="play.title">Nueva partida</text>
     <text key="play.start">Empezar partida</text>
@@ -85,6 +86,7 @@
     <text key="assist.geo">Geo</text>
     <text key="assist.runes">Runes</text>
     <text key="menu.record">Best: {score}</text>
+    <text key="menu.record_mode">Best ({mode}): {score}</text>
     <text key="menu.gc_player">Game Center: {name}</text>
     <text key="play.title">New game</text>
     <text key="play.start">Start game</text>
@@ -152,6 +154,7 @@
     <text key="assist.geo">Géo</text>
     <text key="assist.runes">Runes</text>
     <text key="menu.record">Record : {score}</text>
+    <text key="menu.record_mode">Record ({mode}) : {score}</text>
     <text key="menu.gc_player">Game Center : {name}</text>
     <text key="play.title">Nouvelle partie</text>
     <text key="play.start">Commencer</text>

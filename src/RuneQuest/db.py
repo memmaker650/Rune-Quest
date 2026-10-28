@@ -49,6 +49,13 @@ ALTER TABLE EstadoPartida ADD COLUMN modo TEXT NOT NULL DEFAULT 'classic';
 PRAGMA user_version = 3;
 """
 
+# Cada puntuación guarda su modo de juego (las anteriores a este cambio cuentan como Clásico).
+SCHEMA_V4 = """
+ALTER TABLE scores ADD COLUMN mode TEXT NOT NULL DEFAULT 'classic';
+CREATE INDEX IF NOT EXISTS idx_scores_mode_score ON scores(mode, score DESC);
+PRAGMA user_version = 4;
+"""
+
 
 DB_NAME = "RuneQuest_database.db"
 LEGACY_DB_NAME = "orbes.db"
@@ -120,7 +127,11 @@ class Database:
             log.info("Migrando esquema de la base de datos: v%d -> v3 (modo de juego)",
                      max(version, 2))
             self.conn.executescript(SCHEMA_V3)
-        # Futuras migraciones: if version < 4: ...
+        if version < 4:
+            log.info("Migrando esquema de la base de datos: v%d -> v4 (modo en las puntuaciones)",
+                     max(version, 3))
+            self.conn.executescript(SCHEMA_V4)
+        # Futuras migraciones: if version < 5: ...
 
     def close(self):
         try:
@@ -129,25 +140,27 @@ class Database:
             log.warning("Error al cerrar la base de datos", exc_info=True)
 
     # --- puntuaciones ---
-    def add_score(self, player: str, score: int, level: int) -> int:
+    def add_score(self, player: str, score: int, level: int, mode: str = "classic") -> int:
         try:
             with self.conn:
                 cur = self.conn.execute(
-                    "INSERT INTO scores (player, score, level) VALUES (?, ?, ?)",
-                    (player, int(score), int(level)),
+                    "INSERT INTO scores (player, score, level, mode) VALUES (?, ?, ?, ?)",
+                    (player, int(score), int(level), mode),
                 )
         except sqlite3.Error:
-            log.exception("No se pudo guardar la puntuación (%s, %s, nivel %s)",
-                          player, score, level)
+            log.exception("No se pudo guardar la puntuación (%s, %s, nivel %s, modo %s)",
+                          player, score, level, mode)
             raise
-        log.info("Puntuación guardada: %s = %d (nivel %d)", player, score, level)
+        log.info("Puntuación guardada: %s = %d (nivel %d, modo %s)", player, score, level, mode)
         return cur.lastrowid
 
-    def top_scores(self, limit: int = 10) -> list[dict]:
+    def top_scores(self, limit: int = 10, mode: str | None = None) -> list[dict]:
+        """Mejores puntuaciones; de un modo de juego si se indica ``mode``."""
+        where, params = ("WHERE mode = ? ", (mode,)) if mode else ("", ())
         rows = self.conn.execute(
-            "SELECT player, score, level, created_at FROM scores "
+            "SELECT player, score, level, mode, created_at FROM scores " + where +
             "ORDER BY score DESC, id ASC LIMIT ?",
-            (limit,),
+            (*params, limit),
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -216,6 +229,11 @@ class Database:
         log.info("Partida guardada eliminada")
 
     # --- estadísticas ---
-    def best_score(self) -> int:
-        row = self.conn.execute("SELECT MAX(score) AS best FROM scores").fetchone()
+    def best_score(self, mode: str | None = None) -> int:
+        """Récord (de un modo de juego si se indica ``mode``; si no, de todos)."""
+        if mode:
+            row = self.conn.execute("SELECT MAX(score) AS best FROM scores WHERE mode = ?",
+                                    (mode,)).fetchone()
+        else:
+            row = self.conn.execute("SELECT MAX(score) AS best FROM scores").fetchone()
         return int(row["best"] or 0)

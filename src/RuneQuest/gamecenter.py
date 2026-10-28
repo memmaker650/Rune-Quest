@@ -1,7 +1,8 @@
 """Game Center (iOS y macOS) mediante GameKit y rubicon-objc.
 
 Hace tres cosas: identifica al jugador (nombre y id de Game Center), envía las puntuaciones a la
-clasificación ``settings.GAMECENTER_LEADERBOARD_ID`` y abre la clasificación de Game Center.
+clasificación de su modo de juego (``settings.GAMECENTER_LEADERBOARDS``) y abre las
+clasificaciones de Game Center.
 
 En el resto de plataformas, sin rubicon-objc, con ``RUNEQUEST_GAMECENTER=0`` o si GameKit falla
 (p. ej. app sin firmar o sin la capacidad Game Center), se usa ``GameCenter``, que no hace nada:
@@ -36,7 +37,7 @@ class GameCenter:
     def authenticate(self) -> None:
         pass
 
-    def submit_score(self, score: int) -> None:
+    def submit_score(self, score: int, mode: str = "classic") -> None:
         pass
 
     def show_leaderboards(self) -> None:
@@ -59,7 +60,7 @@ class GameKitCenter(GameCenter):
         self._ObjCClass = ObjCClass
         self._player = ObjCClass("GKLocalPlayer").localPlayer
         self._leaderboard = ObjCClass("GKLeaderboard")
-        self._pending_score = 0          # mejor puntuación pendiente de enviar
+        self._pending: dict[str, int] = {}   # modo -> mejor puntuación pendiente de enviar
         # Hay que conservar los bloques: si Python los libera, GameKit llamaría a memoria muerta.
         self._auth_block = Block(self._on_auth, None, objc_id, objc_id)
         self._submit_block = Block(self._on_submitted, None, objc_id)
@@ -90,8 +91,8 @@ class GameKitCenter(GameCenter):
             self.player_name = str(self._player.displayName or self._player.alias)
             self.player_id = str(self._player.gamePlayerID)
             log.info("Game Center: sesión iniciada como %s", self.player_name)
-            if self._pending_score:
-                self.submit_score(self._pending_score)
+            for mode, pending in list(self._pending.items()):
+                self.submit_score(pending, mode)
             if self.on_authenticated:
                 self.on_authenticated(self)
         except Exception:
@@ -109,24 +110,24 @@ class GameKitCenter(GameCenter):
         log.info("Game Center: mostrando la pantalla de inicio de sesión")
 
     # --- puntuaciones ---
-    def submit_score(self, score: int) -> None:
+    def submit_score(self, score: int, mode: str = "classic") -> None:
         score = int(score)
-        if score <= 0:
+        board_id = S.GAMECENTER_LEADERBOARDS.get(mode)
+        if score <= 0 or board_id is None:
             return
         if not self.authenticated:
-            self._pending_score = max(self._pending_score, score)
-            log.info("Game Center sin sesión: la puntuación %d se enviará al iniciar sesión", score)
+            self._pending[mode] = max(self._pending.get(mode, 0), score)
+            log.info("Game Center sin sesión: la puntuación %d (%s) se enviará al iniciar sesión",
+                     score, mode)
             return
         try:
             self._leaderboard.submitScore_context_player_leaderboardIDs_completionHandler_(
-                score, 0, self._player, self._ns_from_py([S.GAMECENTER_LEADERBOARD_ID]),
-                self._submit_block)
+                score, 0, self._player, self._ns_from_py([board_id]), self._submit_block)
         except Exception:
             log.exception("No se pudo enviar la puntuación %d a Game Center", score)
             return
-        self._pending_score = 0
-        log.info("Game Center: enviando %d a la clasificación %s",
-                 score, S.GAMECENTER_LEADERBOARD_ID)
+        self._pending.pop(mode, None)
+        log.info("Game Center: enviando %d a la clasificación %s", score, board_id)
 
     def _on_submitted(self, error) -> None:
         if error:

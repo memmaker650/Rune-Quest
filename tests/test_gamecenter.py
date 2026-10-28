@@ -20,8 +20,9 @@ class FakeGameCenter(gamecenter.GameCenter):
         self.authenticated, self.player_name = True, name
         self.on_authenticated(self)
 
-    def submit_score(self, score):
-        self.submitted.append(score)
+    def submit_score(self, score, mode="classic"):
+        if score > 0:                            # como GameKitCenter: no envía ceros
+            self.submitted.append((score, mode))
 
     def show_leaderboards(self):
         self.opened += 1
@@ -46,7 +47,7 @@ def test_login_sets_player_name_and_uploads_local_best(tmp_path, monkeypatch):
     app.db.add_score("Anon", 800, 2)
     gc.login("Jorge")
     assert app.db.get_setting("player_name") == "Jorge"
-    assert gc.submitted == [800]
+    assert gc.submitted == [(800, "classic")]
 
 
 def test_finished_game_is_sent_to_game_center(tmp_path, monkeypatch):
@@ -59,7 +60,7 @@ def test_finished_game_is_sent_to_game_center(tmp_path, monkeypatch):
     board.grid = [[(r % 2) * 2 + c % 2 for c in range(board.cols)] for r in range(board.rows)]
     scene.game._rain()                           # fin de partida
     app.run(max_frames=2)
-    assert 4321 in gc.submitted
+    assert (4321, "classic") in gc.submitted
     assert Database(tmp_path / "t.db").top_scores(1)[0]["player"] == "Jorge"
 
 
@@ -80,3 +81,11 @@ def test_scores_button_opens_game_center_only_when_logged_in(tmp_path, monkeypat
     assert scene.gc_button.pressed
     scene.handle_event(up)
     assert gc.opened == 1 and app.scene is scene
+
+
+def test_each_mode_uploads_to_its_own_leaderboard(tmp_path, monkeypatch):
+    app, gc = _app(tmp_path, monkeypatch)
+    app.db.add_score("Ana", 500, 2, "fast")
+    app.db.add_score("Ana", 700, 3, "surprise")
+    gc.login("Jorge")
+    assert sorted(gc.submitted) == [(500, "fast"), (700, "surprise")]

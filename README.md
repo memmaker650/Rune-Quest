@@ -130,9 +130,12 @@ Para que funcione de verdad hace falta (una vez):
 
 1. **Cuenta de Apple Developer** y un App ID con el bundle `com.SkullWithGasMask.RuneQuest`
    y la capacidad *Game Center* activada.
-2. **App Store Connect**: crear la app con ese bundle, activar Game Center y crear una
-   clasificación con ID `runequest_highscores` (o cambiar `GAMECENTER_LEADERBOARD_ID` en
-   `settings.py`).
+2. **App Store Connect**: crear la app con ese bundle, activar Game Center y crear **una
+   clasificación por modo de juego**, con estos IDs (o cambiarlos en
+   `GAMECENTER_LEADERBOARDS` de `settings.py`):
+   - Clásico: `runequest_classic`
+   - Rápido: `runequest_fast`
+   - Sorpresa: `runequest_surprise`
 3. **Firmar con tu equipo y activar la capacidad** en el proyecto de Xcode:
    - iOS: `briefcase create iOS`, abrir `build/RuneQuest/ios/xcode/RuneQuest.xcodeproj` →
      *Signing & Capabilities* → elegir el *Team* y añadir *Game Center*.
@@ -148,7 +151,7 @@ es lo esperado sin los pasos anteriores.
 **App Store Connect** es la web de Apple para gestionar las apps que publicas en el App Store. Desde ahí:
 
 Das de alta la app (nombre, bundle ID, ficha de la tienda, capturas, precio).
-Configuras Game Center: activarlo para la app, crear clasificaciones (como runequest_highscores) y logros.
+Configuras Game Center: activarlo para la app, crear clasificaciones (una por modo: runequest_classic, runequest_fast y runequest_surprise) y logros.
 Subes versiones y las distribuyes a testers con TestFlight.
 Envías la app a revisión de Apple y la publicas.
 Consultas ventas, descargas, informes de fallos y valoraciones.

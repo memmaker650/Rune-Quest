@@ -129,6 +129,40 @@ class ModeButton(Button):
                                (round(x), self.rect.bottom - 12 + dy), 4 if i == self.index else 3)
 
 
+class SegmentedControl:
+    """Selector de varias opciones en fila (pestañas): la elegida va rellena."""
+
+    def __init__(self, rect, labels, index, font):
+        self.rect = pygame.Rect(rect)
+        self.labels = labels
+        self.index = index
+        self.font = font
+        self.pressed = False
+        self.pressed_index = None
+        w = self.rect.width / len(labels)
+        self.segments = [pygame.Rect(round(self.rect.x + i * w), self.rect.y, round(w),
+                                     self.rect.height) for i in range(len(labels))]
+
+    def hit(self, pos) -> bool:
+        return self.rect.collidepoint(pos)
+
+    def segment_at(self, pos):
+        return next((i for i, seg in enumerate(self.segments) if seg.collidepoint(pos)), None)
+
+    def draw(self, surf):
+        pygame.draw.rect(surf, S.BUTTON, self.rect, border_radius=12)
+        for i, (seg, label) in enumerate(zip(self.segments, self.labels)):
+            if i == self.index:
+                pygame.draw.rect(surf, S.BUTTON_EDGE, seg.inflate(-6, -6), border_radius=9)
+                color = S.BG                      # texto oscuro sobre la pestaña elegida
+            else:
+                if self.pressed and i == self.pressed_index:
+                    pygame.draw.rect(surf, S.BUTTON_PRESSED, seg.inflate(-6, -6), border_radius=9)
+                color = S.WHITE
+            draw_text(surf, self.font, label, color, center=seg.center)
+        pygame.draw.rect(surf, S.BUTTON_EDGE, self.rect, width=2, border_radius=12)
+
+
 class SoundToggle:
     """Icono pequeño de activar/desactivar: "fx" (efectos) o "music" (dos corcheas unidas).
     Desactivado se ve apagado y tachado."""

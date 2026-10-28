@@ -15,7 +15,7 @@ from .board import SURPRISE, neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
-from .ui import (draw_star, luminance, readable, Button, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
+from .ui import (draw_star, luminance, readable, Button, SegmentedControl, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
                  draw_text_outlined)
 
 log = logging.getLogger(__name__)
@@ -105,7 +105,9 @@ class MenuScene(ButtonScene):
         # Salir: botón cuadrado abajo a la izquierda, alineado con la bandera (en iOS no se sale).
         self.close_button = None if IS_IOS else CloseButton((12, S.LOGICAL_H - 52, 38, 38))
         self._build_buttons()
-        self.best = app.db.best_score()
+        saved = app.db.get_setting("game_mode", S.GAME_MODES[0])
+        self.record_mode = saved if saved in S.GAME_MODES else S.GAME_MODES[0]
+        self.best = app.db.best_score(self.record_mode)
 
     def _build_buttons(self):
         """(Re)crea los botones con los textos del idioma activo."""
@@ -245,7 +247,8 @@ class MenuScene(ButtonScene):
         if self.close_button:
             self.close_button.draw(surf)
         if self.best:
-            draw_text(surf, self.small, t("menu.record", score=self.best), S.WHITE,
+            draw_text(surf, self.small, t("menu.record_mode", mode=t(f"mode.{self.record_mode}"),
+                                          score=format_points(self.best)), S.WHITE,
                       center=(S.LOGICAL_W // 2, S.LOGICAL_H - 40))
         gc = self.app.gamecenter
         if gc.authenticated:
@@ -318,49 +321,81 @@ class NewGameScene(ButtonScene):
 
 
 # --------------------------------------------------------------------------- puntuaciones
-class ScoresScene(Scene):
-    def __init__(self, app):
+class ScoresScene(ButtonScene):
+    """Las TOP_SCORES mejores puntuaciones de un modo de juego, elegido con las pestañas."""
+
+    def __init__(self, app, mode=None):
         super().__init__(app)
-        self.title = pygame.font.Font(None, 56)
-        self.font = pygame.font.Font(None, 30)
-        self.rows = app.db.top_scores(10)
+        self.title = pygame.font.Font(None, 52)
+        self.font = pygame.font.Font(None, 27)
+        self.tab_font = pygame.font.Font(None, 24)
+        self.button_font = pygame.font.Font(None, 30)
+        saved = app.db.get_setting("game_mode", S.GAME_MODES[0])
+        self.mode = mode or (saved if saved in S.GAME_MODES else S.GAME_MODES[0])
+        self.tabs = SegmentedControl((16, 78, S.LOGICAL_W - 32, 40),
+                                     [t(f"mode.{m}") for m in S.GAME_MODES],
+                                     S.GAME_MODES.index(self.mode), self.tab_font)
         self.gc_button = Button((60, S.LOGICAL_H - 140, 240, 52), t("scores.gamecenter"))
+        self._load()
+
+    def _load(self):
+        self.rows = self.app.db.top_scores(S.TOP_SCORES, mode=self.mode)
 
     def _gc_button_visible(self) -> bool:
         return self.app.gamecenter.authenticated
 
+    def _button_at(self, pos):
+        if self.tabs.hit(pos):
+            self.tabs.pressed_index = self.tabs.segment_at(pos)
+            return "tab", self.tabs
+        if self._gc_button_visible() and self.gc_button.hit(pos):
+            return "gc", self.gc_button
+        return None
+
+    def _on_click(self, name):
+        if name == "gc":
+            self.app.gamecenter.show_leaderboards()
+        elif name == "tab" and self.tabs.pressed_index is not None:
+            self._select(self.tabs.pressed_index)
+
+    def _select(self, index):
+        self.mode = S.GAME_MODES[index]
+        self.tabs.index = index
+        self._load()
+
     def handle_event(self, event):
-        # El botón de Game Center se oscurece al pulsarlo y actúa al soltar (como en el menú);
-        # tocar en cualquier otro sitio vuelve al menú.
+        # Pestañas y botón de Game Center: se oscurecen al pulsar y actúan al soltar.
+        # Tocar en cualquier otro sitio vuelve al menú.
         pos = tap_position(event, self.app.display)
-        if pos is not None and self._gc_button_visible() and self.gc_button.hit(pos):
-            self.gc_button.pressed = True
-            return
-        up = release_position(event, self.app.display)
-        if up is not None and self.gc_button.pressed:
-            self.gc_button.pressed = False
-            if self.gc_button.hit(up):
-                self.app.gamecenter.show_leaderboards()
-            return
-        if is_confirm(event, self.app.display) or (
-                event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+        if pos is not None and self._button_at(pos) is None:
             self.app.change_scene(MenuScene(self.app))
+            return
+        if self.handle_pointer(event):
+            return
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                step = 1 if event.key == pygame.K_RIGHT else -1
+                self._select((self.tabs.index + step) % len(S.GAME_MODES))
+            elif event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
+                self.app.change_scene(MenuScene(self.app))
 
     def draw(self, surf):
         surf.fill(S.BG)
-        draw_text(surf, self.title, t("scores.title"), S.ACCENT, center=(S.LOGICAL_W // 2, 70))
+        draw_text(surf, self.title, t("scores.title"), S.ACCENT, center=(S.LOGICAL_W // 2, 44))
+        self.tabs.draw(surf)
         if not self.rows:
             draw_text(surf, self.font, t("scores.empty"), S.WHITE,
                       center=(S.LOGICAL_W // 2, 200))
         for i, row in enumerate(self.rows):
-            y = 130 + i * 40
-            draw_text(surf, self.font, f"{i + 1:>2}.  {row['player']}", S.WHITE, topleft=(30, y))
-            draw_text(surf, self.font, f"{row['score']}  ({t('scores.level', level=row['level'])})",
-                      S.BUTTON_EDGE,
-                      topleft=(215, y))
+            y = 134 + i * 31
+            draw_text(surf, self.font, f"{i + 1:>2}.  {row['player']}", S.WHITE, topleft=(24, y))
+            draw_text(surf, self.font, format_points(row["score"]), S.GOLD if i == 0 else S.WHITE,
+                      topright=(270, y))
+            draw_text(surf, self.font, t("scores.level", level=row["level"]), S.BUTTON_EDGE,
+                      topright=(S.LOGICAL_W - 20, y))
         if self._gc_button_visible():
-            self.gc_button.draw(surf, self.font)
-        draw_text(surf, self.font, t("scores.back"), S.WHITE,
+            self.gc_button.draw(surf, self.button_font)
+        draw_text(surf, self.button_font, t("scores.back"), S.WHITE,
                   center=(S.LOGICAL_W // 2, S.LOGICAL_H - 60))
 
 
@@ -378,8 +413,9 @@ class GameScene(Scene):
         self.rain_falling = False
         self.links_wait = 0.0
         self.links_alpha = 1.0       # 0 = ocultos, 1 = visibles
-        # Récord previo a esta partida: no cambia mientras se juega (al superarlo sale una estrella).
-        self.best = app.db.best_score()
+        # Récord del modo de juego previo a esta partida: no cambia mientras se juega (al
+        # superarlo sale una estrella).
+        self.best = app.db.best_score(self.game.mode)
         self.hud = pygame.font.Font(None, 28)
         self.small = pygame.font.Font(None, 22)
         self.big = pygame.font.Font(None, 56)
@@ -567,11 +603,11 @@ class GameScene(Scene):
             return
         self.saved = True
         if self.game.score > 0:
-            self.app.gamecenter.submit_score(self.game.score)
+            self.app.gamecenter.submit_score(self.game.score, self.game.mode)
             name = (self.app.gamecenter.player_name
                     or self.app.db.get_setting("player_name", t("player.default")))
             try:
-                self.app.db.add_score(name, self.game.score, self.game.level)
+                self.app.db.add_score(name, self.game.score, self.game.level, self.game.mode)
             except sqlite3.Error:
                 # Ya registrado en db.py: no tumbamos la partida por no poder guardar.
                 log.error("La puntuación %d no se ha guardado", self.game.score)
@@ -785,6 +821,9 @@ class GameScene(Scene):
         draw_text(surf, self.hud, t("over.best_combo", count=g.best_chain), S.WHITE,
                   center=(cx, 430))
         if self.is_new_record():
-            draw_text(surf, self.hud, t("over.new_record"), S.BUTTON_EDGE, center=(cx, 470))
+            text = draw_text_outlined(surf, self.hud, t("over.new_record"), S.GOLD,
+                                      S.GOLD_OUTLINE, center=(cx, 470))
+            for x in (text.left - 16, text.right + 16):     # una estrella a cada lado
+                draw_star(surf, (x, text.centery), 10, S.GOLD, S.GOLD_OUTLINE)
         if self.over_t > 0.6:
             draw_text(surf, self.small, t("over.back"), S.WHITE, center=(cx, 510))
