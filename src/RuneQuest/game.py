@@ -28,7 +28,8 @@ SURPRISE_EFFECTS = ("vanish", "explode", "neighbour", "next", "mega")
 
 
 def level_params(level: int) -> dict:
-    return {"colors": min(S.MAX_COLORS, S.START_COLORS + max(0, level - 1))}
+    unlocked = sum(1 for at in S.COLOR_UNLOCK_LEVELS if level >= at)
+    return {"colors": S.START_COLORS + unlocked}
 
 
 def level_threshold(level: int) -> int:

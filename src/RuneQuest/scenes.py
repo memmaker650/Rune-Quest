@@ -15,7 +15,7 @@ from .board import SURPRISE, neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
-from .ui import (Button, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
+from .ui import (luminance, readable, Button, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
                  draw_text_outlined)
 
 log = logging.getLogger(__name__)
@@ -231,7 +231,7 @@ class MenuScene(ButtonScene):
     def draw(self, surf):
         surf.fill(S.BG)
         assist = assist_mode(self.app.db)
-        for i in range(S.MAX_COLORS):  # orbes decorativos flotando
+        for i in range(S.MENU_ORBS):  # orbes decorativos flotando
             x = 30 + i * 60 + math.sin(self.t * 1.3 + i) * 10
             y = 210 + math.sin(self.t * 1.7 + i * 1.1) * 14
             sprite = orb_sprite(i, 52, assist)
@@ -530,7 +530,7 @@ class GameScene(Scene):
             elif ev.kind == "color_clear":
                 name = t(f"color.{d['color'] % len(S.PALETTE)}")
                 self._bonus_banner(t("bonus.color", color=name),
-                                   S.PALETTE[d["color"] % len(S.PALETTE)], d["bonus"])
+                                   readable(S.PALETTE[d["color"] % len(S.PALETTE)]), d["bonus"])
             elif ev.kind == "board_clear":
                 self._bonus_banner(t("bonus.board"), S.ACCENT, d["bonus"])
             elif ev.kind == "rain":
@@ -705,7 +705,8 @@ class GameScene(Scene):
 
         def tint(color):  # el color del orbe, algo aclarado (como en un cristal)
             base = S.PALETTE[color % len(S.PALETTE)]
-            return (*(v + (255 - v) * 0.2 for v in base), S.LINK_ALPHA)
+            light = 0.2 if luminance(base) > 0.1 else 0.45   # negro/marrón: más claro
+            return (*(v + (255 - v) * light for v in base), S.LINK_ALPHA)
 
         for a, b, c, color in triangles:
             pygame.draw.polygon(layer, tint(color), [self._orb_pos(p) for p in (a, b, c)])

@@ -49,7 +49,10 @@ LEVEL_POINTS = 1000              # nivel n -> n+1 al llegar a LEVEL_POINTS * n*(
 
 # --- Dificultad (ver game.level_params) ---
 START_COLORS = 3                 # colores de los orbes nuevos en el nivel 1
-MAX_COLORS = 6
+# Nivel en que se añade cada color nuevo (amarillo, violeta, turquesa, rosa, negro, naranja,
+# marrón): cada vez cuesta más llegar al siguiente.
+COLOR_UNLOCK_LEVELS = (5, 8, 12, 17, 23, 30, 38)
+MAX_COLORS = START_COLORS + len(COLOR_UNLOCK_LEVELS)     # 10
 
 # --- Colores ---
 BG = (18, 20, 40)
@@ -67,11 +70,19 @@ GOLD = (255, 204, 51)            # amarillo dorado de la puntuación final (cont
 GOLD_OUTLINE = (60, 36, 0)       # el panel oscuro); el contorno lo mantiene legible sobre cualquier fondo
 OVER_PANEL = (10, 12, 28)        # panel de fin de partida
 
+# Rojo, azul y verde son los colores iniciales. Los demás se eligieron, en este orden, como el
+# tono de su familia más distinto (ΔE2000) de todos los anteriores: la pareja más parecida de
+# los 10 (amarillo-naranja) está a ΔE 24,8, más que la peor de la paleta antigua de 6 (24,3).
 PALETTE = [
     (232, 84, 84),     # 0 rojo
     (84, 144, 240),    # 1 azul
     (96, 204, 112),    # 2 verde
-    (242, 202, 72),    # 3 amarillo
-    (172, 104, 222),   # 4 violeta
-    (72, 202, 212),    # 5 turquesa
+    (255, 204, 38),    # 3 amarillo   (nivel 5)
+    (156, 46, 184),    # 4 violeta    (nivel 8)
+    (46, 217, 230),    # 5 turquesa   (nivel 12)
+    (255, 166, 240),   # 6 rosa       (nivel 17)
+    (31, 24, 24),      # 7 negro      (nivel 23): lleva borde claro para verse sobre el fondo
+    (245, 129, 12),    # 8 naranja    (nivel 30)
+    (128, 83, 32),     # 9 marrón     (nivel 38)
 ]
+MENU_ORBS = 6                    # orbes decorativos del menú (los 6 primeros colores)

@@ -6,6 +6,26 @@ from . import settings as S
 from .flags import flag_surface
 
 
+def luminance(color) -> float:
+    """Luminancia relativa (WCAG) de un color RGB: 0 = negro, 1 = blanco."""
+    def lin(v):
+        v /= 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = (lin(v) for v in color[:3])
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(a, b) -> float:
+    """Contraste WCAG entre dos colores (1 a 21)."""
+    la, lb = sorted((luminance(a), luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def readable(color, background=S.OVER_PANEL, minimum=4.5):
+    """``color`` si se lee bien sobre ``background``; si no (p. ej. negro), un gris claro."""
+    return color if contrast(color, background) >= minimum else (200, 200, 212)
+
+
 def draw_text(surf, font, text, color, center=None, topleft=None, topright=None):
     img = font.render(text, True, color)
     rect = img.get_rect()

@@ -51,6 +51,10 @@
     <text key="color.3">amarillo</text>
     <text key="color.4">violeta</text>
     <text key="color.5">turquesa</text>
+    <text key="color.6">rosa</text>
+    <text key="color.7">negro</text>
+    <text key="color.8">naranja</text>
+    <text key="color.9">marrón</text>
     <text key="bonus.color">Color {color}|¡limpiado!</text>
     <text key="bonus.board">¡Pantalla|limpia!</text>
     <text key="bonus.points">+{points} puntos de bonus</text>
@@ -110,6 +114,10 @@
     <text key="color.3">Yellow</text>
     <text key="color.4">Purple</text>
     <text key="color.5">Turquoise</text>
+    <text key="color.6">Pink</text>
+    <text key="color.7">Black</text>
+    <text key="color.8">Orange</text>
+    <text key="color.9">Brown</text>
     <text key="bonus.color">{color}|cleared!</text>
     <text key="bonus.board">Board|cleared!</text>
     <text key="bonus.points">+{points} bonus points</text>
@@ -169,6 +177,10 @@
     <text key="color.3">jaune</text>
     <text key="color.4">violette</text>
     <text key="color.5">turquoise</text>
+    <text key="color.6">rose</text>
+    <text key="color.7">noire</text>
+    <text key="color.8">orange</text>
+    <text key="color.9">marron</text>
     <text key="bonus.color">Couleur {color}|éliminée !</text>
     <text key="bonus.board">Écran|nettoyé !</text>
     <text key="bonus.points">+{points} points bonus</text>

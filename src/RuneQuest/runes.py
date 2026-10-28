@@ -4,9 +4,9 @@ Cada runa se define como trazos rectos (así se tallaban), en coordenadas normal
 x de -1 a 1 (izquierda a derecha) e y de -1 a 1 (arriba a abajo). Se dibujan con líneas,
 porque la fuente por defecto de pygame no tiene los caracteres rúnicos de Unicode.
 
-El orden importa: el color ``i`` de los orbes usa la runa ``RUNES[i]``. Las seis primeras son
-las de formas más distintas entre sí, porque hoy el juego usa como mucho 6 colores
-(``settings.MAX_COLORS``); las otras seis quedan listas por si se añaden más colores.
+El orden importa: el color ``i`` de los orbes usa la runa ``RUNES[i]``. El juego usa hasta 10
+colores (``settings.MAX_COLORS``), así que se usan las diez primeras; Wunjo e Isa quedan de
+reserva (Wunjo se parece mucho a Thurisaz, por eso es de las últimas).
 """
 
 from dataclasses import dataclass
