@@ -4,6 +4,7 @@ import logging
 import platform
 import sqlite3
 import sys
+from pathlib import Path
 
 import pygame
 
@@ -17,6 +18,19 @@ from .scenes import MenuScene
 
 log = logging.getLogger(__name__)
 
+ICON_PATH = Path(__file__).parent / "resources" / "icon.png"
+
+
+def set_window_icon() -> None:
+    """Icono de la ventana (y del Dock en macOS). La app empaquetada ya lleva su propio icono;
+    esto hace que también se vea al ejecutar con ``briefcase dev``. En iOS no aplica."""
+    if sys.platform == "ios":
+        return
+    try:
+        pygame.display.set_icon(pygame.image.load(str(ICON_PATH)))
+    except (pygame.error, FileNotFoundError):
+        log.warning("No se pudo cargar el icono de la ventana: %s", ICON_PATH, exc_info=True)
+
 
 class App:
     def __init__(self, db_path=None):
@@ -26,6 +40,7 @@ class App:
         if failed:
             log.warning("pygame.init(): %d módulos no se pudieron inicializar", failed)
         pygame.display.set_caption("Rune Quest")
+        set_window_icon()                     # antes de crear la ventana
         self.display = Display()
         self.db = Database(db_path or default_db_path())
         translations.load()
