@@ -18,18 +18,26 @@ from .scenes import MenuScene
 
 log = logging.getLogger(__name__)
 
-ICON_PATH = Path(__file__).parent / "resources" / "icon.png"
+RESOURCES = Path(__file__).parent / "resources"
+ICON_PATH = RESOURCES / "icon.png"
+MACOS_ICON_PATH = RESOURCES / "icon-macos.png"   # con esquinas redondeadas y margen de macOS
+
+
+def _inside_app_bundle() -> bool:
+    """True si se ejecuta la app empaquetada de macOS (``Rune Quest.app``)."""
+    return any(part.endswith(".app") for part in Path(sys.executable).parts)
 
 
 def set_window_icon() -> None:
-    """Icono de la ventana (y del Dock en macOS). La app empaquetada ya lleva su propio icono;
-    esto hace que también se vea al ejecutar con ``briefcase dev``. En iOS no aplica."""
-    if sys.platform == "ios":
+    """Icono de la ventana (y del Dock en macOS) al ejecutar sin empaquetar (``briefcase dev``).
+    La app empaquetada usa el icono de su paquete, así que ahí no se toca; en iOS no aplica."""
+    if sys.platform == "ios" or (sys.platform == "darwin" and _inside_app_bundle()):
         return
+    path = MACOS_ICON_PATH if sys.platform == "darwin" else ICON_PATH
     try:
-        pygame.display.set_icon(pygame.image.load(str(ICON_PATH)))
+        pygame.display.set_icon(pygame.image.load(str(path)))
     except (pygame.error, FileNotFoundError):
-        log.warning("No se pudo cargar el icono de la ventana: %s", ICON_PATH, exc_info=True)
+        log.warning("No se pudo cargar el icono de la ventana: %s", path, exc_info=True)
 
 
 class App:

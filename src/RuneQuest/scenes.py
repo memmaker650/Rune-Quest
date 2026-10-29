@@ -15,7 +15,7 @@ from .board import SURPRISE, neighbours
 from .game import Game, clear_points
 from .sprites import orb_sprite
 from .translations import t
-from .ui import (draw_star, luminance, readable, Button, SegmentedControl, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
+from .ui import (MEDAL_COLORS, draw_medal, draw_star, draw_trophy, luminance, readable, Button, SegmentedControl, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
                  draw_text_outlined)
 
 log = logging.getLogger(__name__)
@@ -422,6 +422,7 @@ class GameScene(Scene):
         self.big = pygame.font.Font(None, 56)
         self.bonus_font = pygame.font.Font(None, 46)
         self.score_font = pygame.font.Font(None, 52)     # puntuación final
+        self.rank_font = pygame.font.Font(None, 23)      # TOP 10 / TOP 3
         # Tercera línea del marcador: iconos de efectos (FX) y música, a la derecha.
         audio = app.audio
         music_x = S.LOGICAL_W - 12 - 32
@@ -435,6 +436,7 @@ class GameScene(Scene):
         self.banners: list = []      # avisos en cola; se muestra el primero (ver _queue_banner)
         self.hover = None
         self.saved = False
+        self.rank = 0                # puesto de la puntuación final en su modo (0 = sin guardar)
         self.over_t = 0.0
         self.t = 0.0
         self.rng = random.Random()
@@ -608,7 +610,9 @@ class GameScene(Scene):
             name = (self.app.gamecenter.player_name
                     or self.app.db.get_setting("player_name", t("player.default")))
             try:
-                self.app.db.add_score(name, self.game.score, self.game.level, self.game.mode)
+                score_id = self.app.db.add_score(name, self.game.score, self.game.level,
+                                                 self.game.mode)
+                self.rank = self.app.db.score_rank(score_id)   # puesto en su modo de juego
             except sqlite3.Error:
                 # Ya registrado en db.py: no tumbamos la partida por no poder guardar.
                 log.error("La puntuación %d no se ha guardado", self.game.score)
@@ -786,8 +790,10 @@ class GameScene(Scene):
                            topleft=(12, 12))
         if self.is_new_record():
             draw_star(surf, (points.right + 14, points.centery), 10, S.GOLD, S.GOLD_OUTLINE)
+        badge = draw_text(surf, self.hud, t(f"mode_short.{g.mode}"), S.MODE_BADGE,
+                          topright=(S.LOGICAL_W - 12, 12))          # C, R o S: modo de juego
         draw_text(surf, self.hud, t("game.level", level=g.level), S.WHITE,
-                  topright=(S.LOGICAL_W - 12, 12))
+                  topright=(badge.left - 10, 12))
         # 2ª línea: récord y siguiente nivel
         draw_text(surf, self.small, t("game.record", score=self.best), S.BUTTON_EDGE,
                   topleft=(12, 44))
@@ -809,7 +815,8 @@ class GameScene(Scene):
         dim.fill((0, 0, 0, 170))
         surf.blit(dim, (0, 0))
         cx = S.LOGICAL_W // 2
-        panel = pygame.Rect(16, 236, S.LOGICAL_W - 32, 300)
+        badges = [b for b in (self.is_new_record(), 0 < self.rank <= 10) if b]
+        panel = pygame.Rect(16, 236, S.LOGICAL_W - 32, 300 + 38 * len(badges))
         pygame.draw.rect(surf, S.OVER_PANEL, panel, border_radius=18)
         pygame.draw.rect(surf, S.BUTTON_EDGE, panel, width=2, border_radius=18)
         draw_text(surf, self.big, t("over.title"), S.ACCENT, center=(cx, 280))
@@ -821,10 +828,26 @@ class GameScene(Scene):
         draw_text(surf, self.hud, t("over.level", level=g.level), S.WHITE, center=(cx, 397))
         draw_text(surf, self.hud, t("over.best_combo", count=g.best_chain), S.WHITE,
                   center=(cx, 430))
+        y = 470
         if self.is_new_record():
             text = draw_text_outlined(surf, self.hud, t("over.new_record"), S.GOLD,
-                                      S.GOLD_OUTLINE, center=(cx, 470))
+                                      S.GOLD_OUTLINE, center=(cx, y))
             for x in (text.left - 16, text.right + 16):     # una estrella a cada lado
                 draw_star(surf, (x, text.centery), 10, S.GOLD, S.GOLD_OUTLINE)
+            y += 38
+        if 0 < self.rank <= 3:                              # TOP 3: tres medallas detrás
+            label = t("over.top3")
+            width = self.rank_font.size(label)[0] + 8 + 3 * 22
+            text = draw_text_outlined(surf, self.rank_font, label, S.GOLD, S.GOLD_OUTLINE,
+                                      topleft=(cx - width // 2, y - 11))
+            for i, color in enumerate(MEDAL_COLORS):
+                draw_medal(surf, (text.right + 18 + i * 22, text.centery), 20, color)
+            y += 38
+        elif 0 < self.rank <= 10:                           # TOP 10: un trofeo a cada lado
+            text = draw_text_outlined(surf, self.rank_font, t("over.top10"), S.GOLD,
+                                      S.GOLD_OUTLINE, center=(cx, y))
+            for x in (text.left - 17, text.right + 17):
+                draw_trophy(surf, (x, text.centery), 19)
+            y += 38
         if self.over_t > 0.6:
-            draw_text(surf, self.small, t("over.back"), S.WHITE, center=(cx, 510))
+            draw_text(surf, self.small, t("over.back"), S.WHITE, center=(cx, y + 40))

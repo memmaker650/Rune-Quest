@@ -72,6 +72,7 @@ ACCENT = (150, 210, 255)
 BUTTON = (50, 60, 120)
 BUTTON_PRESSED = (28, 34, 72)     # botón mientras se mantiene pulsado
 BUTTON_EDGE = (120, 140, 230)
+MODE_BADGE = (96, 214, 112)       # letra verde del modo de juego en el marcador
 SURPRISE_ORB = (236, 236, 242)   # orbe sorpresa: blanco con un "?" negro
 SURPRISE_INK = (18, 18, 24)
 GOLD = (255, 204, 51)            # amarillo dorado de la puntuación final (contraste ~12:1 sobre

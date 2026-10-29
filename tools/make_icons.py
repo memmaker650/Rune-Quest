@@ -10,7 +10,8 @@ Escribe en src/RuneQuest/resources/:
     icon-<tamaño>.png   iOS (20 ... 1024) y pantallas de arranque (640, 1280, 1920)
     icon.icns           macOS (con la forma de esquinas redondeadas y margen de macOS)
     icon.ico            Windows
-    icon.png            512 px, vista previa
+    icon.png            512 px, vista previa e icono de ventana (Windows, Linux)
+    icon-macos.png      512 px con la forma de macOS: icono del Dock al ejecutar sin empaquetar
 """
 
 import io
@@ -873,6 +874,7 @@ def main():
         pygame.image.save(resized(flat, size), str(OUT / f"icon-{size}.png"))
     pygame.image.save(resized(flat, 512), str(OUT / "icon.png"))
     mac = macos_shape(art)
+    pygame.image.save(resized(mac, 512), str(OUT / "icon-macos.png"))   # ventana en macOS
     if shutil.which("iconutil"):
         write_icns(OUT / "icon.icns", mac)
     else:

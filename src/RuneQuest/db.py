@@ -154,6 +154,18 @@ class Database:
         log.info("Puntuación guardada: %s = %d (nivel %d, modo %s)", player, score, level, mode)
         return cur.lastrowid
 
+    def score_rank(self, score_id: int) -> int:
+        """Puesto (1 = mejor) de la puntuación ``score_id`` dentro de su modo de juego, con el
+        mismo orden que ``top_scores``: más puntos primero y, a igualdad, la más antigua."""
+        row = self.conn.execute("SELECT score, mode FROM scores WHERE id = ?",
+                                (score_id,)).fetchone()
+        if row is None:
+            return 0
+        better = self.conn.execute(
+            "SELECT COUNT(*) FROM scores WHERE mode = ? AND (score > ? OR (score = ? AND id < ?))",
+            (row["mode"], row["score"], row["score"], score_id)).fetchone()[0]
+        return better + 1
+
     def top_scores(self, limit: int = 10, mode: str | None = None) -> list[dict]:
         """Mejores puntuaciones; de un modo de juego si se indica ``mode``."""
         where, params = ("WHERE mode = ? ", (mode,)) if mode else ("", ())

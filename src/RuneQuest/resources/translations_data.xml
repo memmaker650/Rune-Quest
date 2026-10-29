@@ -27,6 +27,9 @@
     <text key="mode.classic">Clásico</text>
     <text key="mode.fast">Rápido</text>
     <text key="mode.surprise">Sorpresa</text>
+    <text key="mode_short.classic">C</text>
+    <text key="mode_short.fast">R</text>
+    <text key="mode_short.surprise">S</text>
     <text key="scores.title">Puntuaciones</text>
     <text key="scores.empty">Aún no hay partidas</text>
     <text key="scores.level">N{level}</text>
@@ -70,6 +73,8 @@
     <text key="over.level">Nivel {level}</text>
     <text key="over.best_combo">Mejor combinación: {count} orbes</text>
     <text key="over.new_record">¡Nuevo récord!</text>
+    <text key="over.top10">Puntuación TOP 10</text>
+    <text key="over.top3">Puntuación TOP 3</text>
     <text key="over.back">Toca para volver al menú</text>
     <text key="player.default">Jugador</text>
   </language>
@@ -95,6 +100,9 @@
     <text key="mode.classic">Classic</text>
     <text key="mode.fast">Fast</text>
     <text key="mode.surprise">Surprise</text>
+    <text key="mode_short.classic">C</text>
+    <text key="mode_short.fast">F</text>
+    <text key="mode_short.surprise">S</text>
     <text key="scores.title">High scores</text>
     <text key="scores.empty">No games yet</text>
     <text key="scores.level">L{level}</text>
@@ -138,6 +146,8 @@
     <text key="over.level">Level {level}</text>
     <text key="over.best_combo">Best combination: {count} orbs</text>
     <text key="over.new_record">New record!</text>
+    <text key="over.top10">TOP 10 score</text>
+    <text key="over.top3">TOP 3 score</text>
     <text key="over.back">Tap to return to the menu</text>
     <text key="player.default">Player</text>
   </language>
@@ -163,6 +173,9 @@
     <text key="mode.classic">Classique</text>
     <text key="mode.fast">Rapide</text>
     <text key="mode.surprise">Surprise</text>
+    <text key="mode_short.classic">C</text>
+    <text key="mode_short.fast">R</text>
+    <text key="mode_short.surprise">S</text>
     <text key="scores.title">Scores</text>
     <text key="scores.empty">Aucune partie</text>
     <text key="scores.level">N{level}</text>
@@ -206,6 +219,8 @@
     <text key="over.level">Niveau {level}</text>
     <text key="over.best_combo">Meilleure combinaison : {count} orbes</text>
     <text key="over.new_record">Nouveau record !</text>
+    <text key="over.top10">Score TOP 10</text>
+    <text key="over.top3">Score TOP 3</text>
     <text key="over.back">Touchez pour revenir au menu</text>
     <text key="player.default">Joueur</text>
   </language>

@@ -258,3 +258,30 @@ def test_scores_screen_tabs_switch_mode(tmp_path):
     scene.draw(app.display.surface)
     _tap(scene, (S.LOGICAL_W // 2, 600))        # fuera de los botones: vuelve al menú
     assert isinstance(app.scene, MenuScene)
+
+
+def test_hud_shows_game_mode_letter(tmp_path):
+    from RuneQuest import translations
+    app = App(db_path=tmp_path / "t.db")
+    assert [translations.t(f"mode_short.{m}") for m in S.GAME_MODES] == ["C", "R", "S"]
+    for mode in S.GAME_MODES:
+        GameScene(app, seed=1, mode=mode).draw(app.display.surface)
+
+
+def _finish(app, score, mode="classic"):
+    scene = GameScene(app, seed=1, mode=mode)
+    scene.game.score = score
+    scene._save_score()
+    scene.game.over, scene.over_t = True, 1.0
+    scene.draw(app.display.surface)
+    return scene
+
+
+def test_game_over_shows_top3_and_top10(tmp_path):
+    app = App(db_path=tmp_path / "t.db")
+    for s in range(1000, 11000, 1000):                  # 10 puntuaciones de 1000 a 10000
+        app.db.add_score("X", s, 1, "classic")
+    assert _finish(app, 20000).rank == 1                # TOP 3 (y nuevo récord)
+    assert _finish(app, 8500).rank == 4                 # TOP 10
+    assert _finish(app, 500).rank > 10                  # fuera del TOP 10
+    assert _finish(app, 500, mode="fast").rank == 1     # cada modo tiene su propio TOP

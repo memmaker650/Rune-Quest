@@ -120,3 +120,13 @@ def test_old_scores_become_classic(tmp_path):
     db = Database(path)
     assert db.top_scores(mode="classic")[0]["player"] == "Ana"
     assert db.best_score("fast") == 0
+
+
+def test_score_rank_within_its_mode():
+    db = Database(":memory:")
+    ids = [db.add_score("A", s, 1, "classic") for s in (500, 300, 100)]
+    db.add_score("Z", 9999, 1, "fast")                  # otro modo: no cuenta
+    assert [db.score_rank(i) for i in ids] == [1, 2, 3]
+    tie = db.add_score("B", 300, 1, "classic")          # empate: la más antigua va antes
+    assert db.score_rank(tie) == 3
+    assert db.score_rank(12345) == 0

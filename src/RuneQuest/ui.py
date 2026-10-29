@@ -41,10 +41,11 @@ def draw_text(surf, font, text, color, center=None, topleft=None, topright=None)
     return rect
 
 
-def draw_text_outlined(surf, font, text, color, outline, center, thickness=2):
+def draw_text_outlined(surf, font, text, color, outline, center=None, thickness=2,
+                       topleft=None):
     """Texto con contorno: se lee bien aunque el fondo tenga zonas claras."""
     shadow = font.render(text, True, outline)
-    rect = shadow.get_rect(center=center)
+    rect = shadow.get_rect(center=center) if center is not None else shadow.get_rect(topleft=topleft)
     for dx in range(-thickness, thickness + 1):
         for dy in range(-thickness, thickness + 1):
             if dx or dy:
@@ -64,6 +65,53 @@ def draw_star(surf, center, radius, color, outline=None):
     pygame.draw.polygon(surf, color, points)
     if outline is not None:
         pygame.draw.polygon(surf, outline, points, 2)
+
+
+def draw_trophy(surf, center, size, color=S.GOLD, outline=S.GOLD_OUTLINE):
+    """Trofeo (copa con asas y peana); la fuente por defecto no tiene emojis como 🏆."""
+    cx, cy = center
+    s = size / 20
+    cup = [(cx - 9 * s, cy - 9 * s), (cx + 9 * s, cy - 9 * s), (cx + 7 * s, cy - 1 * s),
+           (cx + 3 * s, cy + 3 * s), (cx - 3 * s, cy + 3 * s), (cx - 7 * s, cy - 1 * s)]
+    for side in (-1, 1):                                      # asas
+        rect = pygame.Rect(0, 0, round(8 * s), round(9 * s))
+        rect.center = (round(cx + side * 9 * s), round(cy - 5 * s))
+        pygame.draw.ellipse(surf, outline, rect.inflate(4, 4), max(2, round(3 * s)))
+        pygame.draw.ellipse(surf, color, rect, max(1, round(2 * s)))
+    stem = pygame.Rect(0, 0, round(4 * s), round(6 * s))
+    stem.midtop = (round(cx), round(cy + 2 * s))
+    base = pygame.Rect(0, 0, round(13 * s), round(4 * s))
+    base.midtop = (round(cx), round(cy + 7 * s))
+    for shape in (stem, base):
+        pygame.draw.rect(surf, outline, shape.inflate(4, 4), border_radius=2)
+    pygame.draw.polygon(surf, outline, cup, 4)
+    pygame.draw.polygon(surf, color, cup)
+    for shape in (stem, base):
+        pygame.draw.rect(surf, color, shape, border_radius=1)
+    pygame.draw.line(surf, (255, 246, 200), (cx - 5 * s, cy - 7 * s), (cx - 4 * s, cy - 2 * s),
+                     max(1, round(2 * s)))                    # brillo
+
+
+MEDAL_COLORS = ((255, 204, 51), (196, 202, 214), (205, 127, 50))   # oro, plata, bronce
+
+
+def draw_medal(surf, center, size, color, ribbon=(84, 144, 240)):
+    """Medalla redonda con cinta en V (sustituye a los emojis 🥇🥈🥉)."""
+    cx, cy = center
+    s = size / 20
+    for dx in (-1, 1):                                        # cinta
+        pts = [(cx + dx * 2 * s, cy - 2 * s), (cx + dx * 8 * s, cy - 11 * s),
+               (cx + dx * 3 * s, cy - 11 * s), (cx - dx * 1 * s, cy - 3 * s)]
+        pygame.draw.polygon(surf, S.BLACK, pts, 3)
+        pygame.draw.polygon(surf, ribbon if dx < 0 else _darker(ribbon), pts)
+    r = round(7 * s)
+    pygame.draw.circle(surf, S.BLACK, (round(cx), round(cy + 3 * s)), r + 2)
+    pygame.draw.circle(surf, color, (round(cx), round(cy + 3 * s)), r)
+    pygame.draw.circle(surf, _darker(color), (round(cx), round(cy + 3 * s)), max(2, r - 3), 2)
+
+
+def _darker(color, k=0.75):
+    return tuple(int(v * k) for v in color)
 
 
 class Button:
