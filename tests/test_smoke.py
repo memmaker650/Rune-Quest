@@ -281,7 +281,11 @@ def test_game_over_shows_top3_and_top10(tmp_path):
     app = App(db_path=tmp_path / "t.db")
     for s in range(1000, 11000, 1000):                  # 10 puntuaciones de 1000 a 10000
         app.db.add_score("X", s, 1, "classic")
-    assert _finish(app, 20000).rank == 1                # TOP 3 (y nuevo récord)
-    assert _finish(app, 8500).rank == 4                 # TOP 10
-    assert _finish(app, 500).rank > 10                  # fuera del TOP 10
+    first = _finish(app, 20000)                         # 1.º: solo "¡Nuevo récord!"
+    assert first.rank == 1 and first.is_new_record() and first.rank_badge() is None
+    third = _finish(app, 9500)                          # 3.º (tras 20000 y 10000): TOP 3
+    assert third.rank == 3 and third.rank_badge() == "top3"
+    fifth = _finish(app, 8500)                          # 5.º: TOP 10
+    assert fifth.rank == 5 and fifth.rank_badge() == "top10"
+    assert _finish(app, 500).rank_badge() is None       # fuera del TOP 10
     assert _finish(app, 500, mode="fast").rank == 1     # cada modo tiene su propio TOP

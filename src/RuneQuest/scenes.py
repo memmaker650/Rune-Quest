@@ -780,6 +780,13 @@ class GameScene(Scene):
             draw_text(surf, font, text, color, center=(S.LOGICAL_W // 2, y + h // 2))
             y += h
 
+    def rank_badge(self) -> str | None:
+        """Aviso de clasificación en fin de partida: "top3" para el 2.º y 3.º puesto, "top10"
+        del 4.º al 10.º. El 1.º no lleva: ya sale "¡Nuevo récord!"."""
+        if self.is_new_record() or not 2 <= self.rank <= 10:
+            return None
+        return "top3" if self.rank <= 3 else "top10"
+
     def is_new_record(self) -> bool:
         """La puntuación de esta partida supera el récord que había al empezarla."""
         return self.game.score > self.best
@@ -815,7 +822,8 @@ class GameScene(Scene):
         dim.fill((0, 0, 0, 170))
         surf.blit(dim, (0, 0))
         cx = S.LOGICAL_W // 2
-        badges = [b for b in (self.is_new_record(), 0 < self.rank <= 10) if b]
+        badge = self.rank_badge()
+        badges = [b for b in (self.is_new_record(), badge) if b]
         panel = pygame.Rect(16, 236, S.LOGICAL_W - 32, 300 + 38 * len(badges))
         pygame.draw.rect(surf, S.OVER_PANEL, panel, border_radius=18)
         pygame.draw.rect(surf, S.BUTTON_EDGE, panel, width=2, border_radius=18)
@@ -835,7 +843,7 @@ class GameScene(Scene):
             for x in (text.left - 16, text.right + 16):     # una estrella a cada lado
                 draw_star(surf, (x, text.centery), 10, S.GOLD, S.GOLD_OUTLINE)
             y += 38
-        if 0 < self.rank <= 3:                              # TOP 3: tres medallas detrás
+        if badge == "top3":                                 # TOP 3: tres medallas detrás
             label = t("over.top3")
             width = self.rank_font.size(label)[0] + 8 + 3 * 22
             text = draw_text_outlined(surf, self.rank_font, label, S.GOLD, S.GOLD_OUTLINE,
@@ -843,7 +851,7 @@ class GameScene(Scene):
             for i, color in enumerate(MEDAL_COLORS):
                 draw_medal(surf, (text.right + 18 + i * 22, text.centery), 20, color)
             y += 38
-        elif 0 < self.rank <= 10:                           # TOP 10: un trofeo a cada lado
+        elif badge == "top10":                              # TOP 10: un trofeo a cada lado
             text = draw_text_outlined(surf, self.rank_font, t("over.top10"), S.GOLD,
                                       S.GOLD_OUTLINE, center=(cx, y))
             for x in (text.left - 17, text.right + 17):
