@@ -37,6 +37,13 @@ def level_threshold(level: int) -> int:
     return S.LEVEL_POINTS * level * (level + 1) // 2
 
 
+def color_extra_points(n: int, colors: int) -> int:
+    """Extra de una combinación de ``n`` orbes según los colores en juego (ver settings)."""
+    if colors <= S.COLOR_POINTS_FROM or n < S.MIN_GROUP:
+        return 0
+    return S.COLOR_POINTS_STEP * ((colors - S.COLOR_POINTS_FROM) + (n - S.MIN_GROUP))
+
+
 def clear_points(n: int) -> int:
     return n * (n - 1) * S.POINTS_PER_PAIR
 
@@ -128,7 +135,7 @@ class Game:
             return False
 
         n = len(result.cells)
-        points = clear_points(n)
+        points = self.combo_points(n)
         self.score += points
         self.taps += 1
         self.best_chain = max(self.best_chain, n)
@@ -139,6 +146,10 @@ class Game:
         self._check_clear_bonuses({result.color})
         self._after_move()
         return True
+
+    def combo_points(self, n: int) -> int:
+        """Puntos de una combinación de ``n`` orbes: los de base más el extra por colores."""
+        return clear_points(n) + color_extra_points(n, self.board.n_colors)
 
     def _after_move(self) -> None:
         while self.score >= self.next_level_at:
@@ -191,15 +202,13 @@ class Game:
 
     def _maybe_spawn_surprise(self) -> None:
         """En modo sorpresa, a partir de SURPRISE_FIRST_LEVEL y cada SURPRISE_EVERY niveles, un
-        orbe al azar se convierte en orbe sorpresa (solo puede haber uno a la vez)."""
+        orbe al azar se convierte en orbe sorpresa. Puede haber varios a la vez: los que no se
+        han pulsado siguen en el tablero y cada nivel que toque añade uno más."""
         if self.mode != "surprise" or self.level < S.SURPRISE_FIRST_LEVEL:
             return
         if (self.level - S.SURPRISE_FIRST_LEVEL) % S.SURPRISE_EVERY:
             return
         board = self.board
-        if board.find(SURPRISE) is not None:
-            log.info("Nivel %d: ya hay un orbe sorpresa en el tablero", self.level)
-            return
         cells = [(r, c) for r in range(board.rows) for c in range(board.cols)
                  if board.grid[r][c] not in (EMPTY, SURPRISE)]
         if not cells:

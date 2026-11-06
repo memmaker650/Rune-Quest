@@ -12,7 +12,7 @@ from . import translations
 from . import settings as S
 from .controls import is_confirm, is_real_mouse_motion, release_position, tap_position
 from .board import SURPRISE, neighbours
-from .game import Game, clear_points
+from .game import Game
 from .sprites import orb_sprite
 from .translations import t
 from .ui import (MEDAL_COLORS, draw_medal, draw_star, draw_trophy, luminance, readable, Button, SegmentedControl, CloseButton, FlagButton, ModeButton, SoundToggle, draw_text,
@@ -583,7 +583,7 @@ class GameScene(Scene):
                 self._queue_banner(lines, 1.8 if len(lines) > 1 else 1.2)
             elif ev.kind == "level":
                 self._queue_banner([(t("game.level_banner", level=d["level"]), self.big,
-                                     S.ACCENT)], 1.6)
+                                     S.ACCENT)], S.LEVEL_BANNER_TIME)
             elif ev.kind == "over":
                 self._save_score()
                 self._save_progress()      # borra la partida guardada
@@ -676,7 +676,7 @@ class GameScene(Scene):
                         cx, cy = self._cell_center(r, c)
                         pygame.draw.circle(surf, S.WHITE, (round(cx), round(cy)),
                                            S.CELL // 2 - 1, 3)
-                    hover_info = (len(group), clear_points(len(group)))
+                    hover_info = (len(group), g.combo_points(len(group)))
         surf.set_clip(None)
 
         for x, y, _, _, life, color in self.particles:

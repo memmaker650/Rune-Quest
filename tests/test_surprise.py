@@ -33,11 +33,26 @@ def test_surprise_orb_appears_at_levels_4_6_8_only_in_surprise_mode():
     assert classic.board.find(SURPRISE) is None
 
 
-def test_only_one_surprise_orb_at_a_time():
+def _surprises(g):
+    return sum(v == SURPRISE for row in g.board.grid for v in row)
+
+
+def test_several_surprise_orbs_can_be_on_the_board():
     g = Game(seed=2, mode="surprise")
     _level_to(g, 4)
-    _level_to(g, 6)
-    assert sum(v == SURPRISE for row in g.board.grid for v in row) == 1
+    _level_to(g, 6)                              # el del nivel 4 sigue sin pulsar
+    assert _surprises(g) == 2
+    _level_to(g, 8)
+    assert _surprises(g) == 3
+    events = [e for e in g.pop_events() if e.kind == "surprise_spawn"]
+    assert len(events) == 3 and len({tuple(e.data["cell"]) for e in events}) == 3
+
+
+def test_skipping_levels_at_once_spawns_one_per_level():
+    g = Game(seed=5, mode="surprise")
+    g.score = level_threshold(9)                 # del nivel 1 al 10 de golpe: 4, 6, 8 y 10
+    g._after_move()
+    assert g.level == 10 and _surprises(g) == 4
 
 
 def _game(lines, n_colors=3):

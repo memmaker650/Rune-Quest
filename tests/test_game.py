@@ -148,3 +148,17 @@ def test_clearing_the_whole_board_gives_both_bonuses():
     assert "rain" in kinds                        # el tablero vacío se vuelve a llenar
     assert g.score >= clear_points(4) + S.COLOR_CLEAR_BONUS + S.BOARD_CLEAR_BONUS
     assert g.board.count() == 4
+
+
+def test_colour_extra_points_follow_the_number_of_colours():
+    from RuneQuest.game import color_extra_points
+    assert [color_extra_points(n, 4) for n in (3, 4, 5)] == [0, 0, 0]
+    assert [color_extra_points(n, 5) for n in (3, 4, 5)] == [10, 20, 30]
+    assert [color_extra_points(n, 6) for n in (3, 4, 5)] == [20, 30, 40]
+    assert color_extra_points(2, 6) == 0                  # no es combinación
+
+
+def test_combination_score_includes_colour_extra():
+    g = game_with(["0.1", ".11", "001", "011"], n_colors=6)   # 6 colores en juego
+    assert g.tap(2, 0)                                        # combinación de 3
+    assert g.score == clear_points(3) + 20

@@ -32,6 +32,7 @@ LINK_ALPHA = 135                 # opacidad (0-255) de los enlaces entre orbes d
 LINK_WIDTH = int(CELL * 0.62)    # grosor de esos enlaces
 LINKS_DELAY_AFTER_RAIN = 0.5     # segundos sin enlaces tras terminar de caer la lluvia
 LINKS_FADE_IN = 0.25             # y luego aparecen con este fundido (segundos)
+LEVEL_BANNER_TIME = 0.50           # segundos del aviso "¡Nivel X!" (antes 1,6: un 40 % menos)
 RAIN_ANIM_RATE = 6.0             # la lluvia de orbes cae a la mitad de velocidad
 
 # --- Modos de juego (de momento todos usan las mismas reglas) ---
@@ -49,6 +50,11 @@ SURPRISE_MEGA_DEPTH = 3          # anillos de orbes que destruye la mega explosi
 # --- Reglas ---
 MIN_GROUP = 3                    # orbes conectados mínimos para poder reventar
 POINTS_PER_PAIR = 10             # puntos = n * (n - 1) * POINTS_PER_PAIR
+# Extra por combinación cuando hay más de COLOR_POINTS_FROM colores en juego:
+#   COLOR_POINTS_STEP * ((colores - COLOR_POINTS_FROM) + (orbes - MIN_GROUP))
+#   p. ej. con 5 colores: 3 orbes +10, 4 orbes +20; con 6 colores: 3 orbes +20, 4 orbes +30
+COLOR_POINTS_FROM = 4
+COLOR_POINTS_STEP = 10
 COLOR_CLEAR_BONUS = 5000         # eliminar todos los orbes de un color
 BOARD_CLEAR_BONUS = 10000        # dejar el tablero sin ningún orbe
 LEVEL_POINTS = 1000              # nivel n -> n+1 al llegar a LEVEL_POINTS * n*(n+1)/2 puntos
