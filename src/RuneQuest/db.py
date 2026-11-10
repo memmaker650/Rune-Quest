@@ -6,6 +6,7 @@ import shutil
 import sqlite3
 from pathlib import Path
 
+from . import paths
 from . import settings as S
 
 log = logging.getLogger(__name__)
@@ -73,8 +74,8 @@ def _data_dir(app_name: str) -> Path:
 
 
 def default_db_path() -> Path:
-    """Carpeta de datos de usuario (sandbox en iOS, Application Support en macOS)."""
-    base = _data_dir(S.APP_NAME)
+    """Base de datos en la carpeta de datos del juego (ver paths.py)."""
+    base = paths.data_dir()
     try:
         base.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -86,11 +87,14 @@ def default_db_path() -> Path:
 
 
 def _migrate_legacy_db(path: Path) -> None:
-    """Copia la BDD antigua (``orbes.db``, en la carpeta nueva o en "Orbes") si aún no hay una."""
+    """Si aún no hay base de datos, copia la de una ubicación anterior: la carpeta de datos de
+    versiones previas (``…/Application Support/RuneQuest``), con su nombre actual o el antiguo
+    ``orbes.db``. La antigua se conserva."""
     if path.exists():
         return
-    candidates = [path.with_name(LEGACY_DB_NAME),
-                  _data_dir(S.LEGACY_APP_NAME) / LEGACY_DB_NAME]
+    old_dirs = dict.fromkeys([path.parent, _data_dir(S.APP_NAME), _data_dir(S.LEGACY_APP_NAME)])
+    candidates = [d / name for d in old_dirs for name in (DB_NAME, LEGACY_DB_NAME)
+                  if d / name != path]
     legacy = next((p for p in candidates if p.exists()), None)
     if legacy is None:
         return

@@ -58,13 +58,22 @@ briefcase dev                        # jugar en el escritorio
 Si ya tienes `pygame` (el clásico) instalado, desinstálalo: comparte el nombre de módulo con
 `pygame-ce` y no deben convivir.
 
-Los datos (`RuneQuest_database.db`) se guardan en la carpeta de datos de usuario (`platformdirs`):
-`~/Library/Application Support/RuneQuest` en macOS, `%LOCALAPPDATA%\Orbes\Orbes` en Windows y el sandbox de la
-app en iOS.
+La base de datos y los logs van a la carpeta de datos del juego (`src/RuneQuest/paths.py`):
 
-Ubicación fichero de Log: 
-Base de datos 	-->		~/Library/Application Support/RuneQuest/RuneQuest_database.db
-Logs 			-->		~/Library/Logs/RuneQuest/RuneQuest_20261016.log
+| Sistema | Carpeta de datos |
+|---|---|
+| macOS | `~/Library/Application Support/com.SkullWithGasMask/RuneQuest` |
+| iOS | `<contenedor de la app>/Library/Application Support/com.SkullWithGasMask/RuneQuest` (en iOS `~` es la carpeta privada de la app) |
+| Windows | `%APPDATA%\com.SkullWithGasMask\RuneQuest` |
+| Linux | `~/.local/share/com.SkullWithGasMask/RuneQuest` (o `$XDG_DATA_HOME`) |
+
+Dentro:
+- `RuneQuest_database.db`: base de datos. La primera vez se copia la de la ubicación anterior
+  (`~/Library/Application Support/RuneQuest`), que se conserva.
+- `log/RuneQuest_AAAAMMDD.log`: un fichero de log por día; al arrancar quedan solo los **10 más
+  recientes**.
+
+Con la variable de entorno `RUNEQUEST_DATA` se puede usar otra carpeta (p. ej. para pruebas).
 
 ## Tests
 

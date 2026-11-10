@@ -9,16 +9,27 @@ def test_log_file_name_uses_date():
     assert log_file_for("x", date(2026, 10, 16)).name == "RuneQuest_20261016.log"
 
 
-def test_remove_old_logs_keeps_last_seven_days(tmp_path):
-    today = date(2026, 10, 16)
-    for name in ["RuneQuest_20261016.log", "RuneQuest_20261009.log",   # hoy y hace 7 días
-                 "RuneQuest_20261008.log", "RuneQuest_20250101.log",   # más de 7 días
-                 "RuneQuest_notadate.log", "otro.log"]:
-        (tmp_path / name).write_text("x")
-    removed = remove_old_logs(tmp_path, today)
-    assert sorted(p.name for p in removed) == ["RuneQuest_20250101.log", "RuneQuest_20261008.log"]
-    assert sorted(p.name for p in tmp_path.iterdir()) == [
-        "RuneQuest_20261009.log", "RuneQuest_20261016.log", "RuneQuest_notadate.log", "otro.log"]
+def test_remove_old_logs_keeps_the_ten_most_recent_files(tmp_path):
+    days = [date(2026, 1, 1), date(2026, 3, 5), date(2026, 3, 6)] + \
+        [date(2026, 10, d) for d in range(1, 11)]             # 13 logs, no seguidos
+    for day in days:
+        log_file_for(tmp_path, day).write_text("x")
+    for name in ("RuneQuest_notadate.log", "RuneQuest_20261340.log", "otro.log"):
+        (tmp_path / name).write_text("x")                     # no son logs diarios: no se tocan
+    removed = remove_old_logs(tmp_path)
+    assert [p.name for p in removed] == ["RuneQuest_20260101.log", "RuneQuest_20260305.log",
+                                         "RuneQuest_20260306.log"]
+    kept = sorted(p.name for p in tmp_path.glob("RuneQuest_2026????.log")
+                  if p.name != "RuneQuest_20261340.log")
+    assert kept == [f"RuneQuest_202610{d:02d}.log" for d in range(1, 11)]
+    for name in ("RuneQuest_notadate.log", "RuneQuest_20261340.log", "otro.log"):
+        assert (tmp_path / name).exists()
+
+
+def test_old_logs_far_apart_are_kept_if_among_the_last_ten(tmp_path):
+    for year in range(2020, 2026):                            # 6 logs, uno por año
+        log_file_for(tmp_path, date(year, 1, 1)).write_text("x")
+    assert remove_old_logs(tmp_path) == []
 
 
 def test_daily_handler_switches_file_at_midnight(tmp_path):
@@ -31,27 +42,33 @@ def test_daily_handler_switches_file_at_midnight(tmp_path):
     assert (tmp_path / "RuneQuest_20261016.log").read_text().strip() == "hola"
 
 
-def test_legacy_database_is_copied_once(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "_data_dir", lambda name: tmp_path / name)
-    legacy = tmp_path / db.S.LEGACY_APP_NAME / db.LEGACY_DB_NAME
-    legacy.parent.mkdir()
-    old = db.Database(legacy); old.add_score("Ana", 500, 2); old.close()
+def _data_dirs(monkeypatch, tmp_path):
+    """Carpeta de datos nueva (paths.data_dir) y antiguas (platformdirs) dentro de tmp_path."""
+    new = tmp_path / "com.SkullWithGasMask" / "RuneQuest"
+    monkeypatch.setattr(db.paths, "data_dir", lambda: new)
+    monkeypatch.setattr(db, "_data_dir", lambda name: tmp_path / "old" / name)
+    return new, tmp_path / "old" / "RuneQuest"
+
+
+def test_database_moves_from_the_previous_folder_once(tmp_path, monkeypatch):
+    new, old_dir = _data_dirs(monkeypatch, tmp_path)
+    old_dir.mkdir(parents=True)
+    old = db.Database(old_dir / db.DB_NAME); old.add_score("Ana", 500, 2); old.close()
 
     path = db.default_db_path()
-    assert path == tmp_path / "RuneQuest" / db.DB_NAME
-    new = db.Database(path)
-    assert new.best_score() == 500
-    new.add_score("Ana", 900, 3); new.close()
+    assert path == new / "RuneQuest_database.db"
+    fresh = db.Database(path)
+    assert fresh.best_score() == 500
+    fresh.add_score("Ana", 900, 3); fresh.close()
     db.default_db_path()                         # la segunda vez no machaca la nueva
     assert db.Database(path).best_score() == 900
-    assert legacy.exists()                       # la antigua se conserva
+    assert (old_dir / db.DB_NAME).exists()       # la antigua se conserva
 
 
-def test_orbes_db_in_new_folder_is_renamed(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "_data_dir", lambda name: tmp_path / name)
-    (tmp_path / "RuneQuest").mkdir()
-    old = db.Database(tmp_path / "RuneQuest" / db.LEGACY_DB_NAME); old.add_score("Ana", 700, 2)
-    old.close()
+def test_very_old_orbes_db_is_also_migrated(tmp_path, monkeypatch):
+    new, old_dir = _data_dirs(monkeypatch, tmp_path)
+    old_dir.mkdir(parents=True)
+    old = db.Database(old_dir / db.LEGACY_DB_NAME); old.add_score("Ana", 700, 2); old.close()
     path = db.default_db_path()
     assert path.name == "RuneQuest_database.db"
     assert db.Database(path).best_score() == 700

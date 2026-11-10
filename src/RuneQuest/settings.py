@@ -2,6 +2,7 @@
 
 # --- Carpetas de usuario (datos y logs) ---
 APP_NAME = "RuneQuest"
+ORG_ID = "com.SkullWithGasMask"   # carpeta de datos: <base>/com.SkullWithGasMask/RuneQuest (ver paths.py)
 LEGACY_APP_NAME = "RuneQuest"         # carpetas de versiones anteriores (se migra la BDD)
 
 # --- Game Center: debe coincidir con el ID de la clasificación en App Store Connect ---
