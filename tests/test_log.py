@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import date, datetime
 
 from RuneQuest import db
@@ -72,3 +73,46 @@ def test_very_old_orbes_db_is_also_migrated(tmp_path, monkeypatch):
     path = db.default_db_path()
     assert path.name == "RuneQuest_database.db"
     assert db.Database(path).best_score() == 700
+
+
+def test_setup_logging_leaves_exactly_ten_including_today(tmp_path):
+    """Regresión: la limpieza se hacía antes de crear el fichero de hoy y quedaban 11."""
+    from RuneQuest.log import KEEP_FILES, PACKAGE, setup_logging
+    for d in range(1, 13):                                    # 12 logs antiguos
+        log_file_for(tmp_path, date(2025, 1, d)).write_text("x")
+    logger = logging.getLogger(PACKAGE)
+    saved = logger.handlers[:]
+    logger.handlers.clear()
+    try:
+        setup_logging(log_dir=tmp_path)
+        names = sorted(p.name for p in tmp_path.glob("RuneQuest_*.log"))
+        assert len(names) == KEEP_FILES == 10
+        assert names[-1] == log_file_for(tmp_path, date.today()).name
+    finally:
+        for h in logger.handlers:
+            h.close()
+        logger.handlers[:] = saved
+
+
+def test_midnight_switch_leaves_exactly_ten(tmp_path):
+    """Regresión: al pasar la medianoche también quedaban 11."""
+    from datetime import timedelta
+    today = date.today()
+    for back in range(1, 11):                                 # 10 logs: de hace 10 días a ayer
+        log_file_for(tmp_path, today - timedelta(days=back)).write_text("x")
+    handler = DailyFileHandler(tmp_path)
+    # Como si hubiera arrancado ayer: escribiendo en el fichero de ayer y sin fichero de hoy
+    # (al crearse, el manejador abre el de hoy; en la vida real a medianoche aún no existe)
+    handler.close()
+    log_file_for(tmp_path, today).unlink()
+    yesterday = today - timedelta(days=1)
+    handler.baseFilename = os.path.abspath(log_file_for(tmp_path, yesterday))
+    handler.day = yesterday                                   # arrancó ayer...
+    record = logging.LogRecord("t", logging.INFO, __file__, 1, "nuevo día", None, None)
+    record.created = datetime.combine(today, datetime.min.time()).timestamp() + 5  # ...00:00:05
+    handler.emit(record)
+    handler.close()
+    names = sorted(p.name for p in tmp_path.glob("RuneQuest_*.log"))
+    assert len(names) == 10
+    assert names[-1] == log_file_for(tmp_path, today).name
+    assert log_file_for(tmp_path, today - timedelta(days=10)).name not in names

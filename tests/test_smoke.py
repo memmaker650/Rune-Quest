@@ -289,3 +289,10 @@ def test_game_over_shows_top3_and_top10(tmp_path):
     assert fifth.rank == 5 and fifth.rank_badge() == "top10"
     assert _finish(app, 500).rank_badge() is None       # fuera del TOP 10
     assert _finish(app, 500, mode="fast").rank == 1     # cada modo tiene su propio TOP
+
+
+def test_hud_numbers_use_thousands_separator(tmp_path):
+    from RuneQuest.scenes import format_points
+    App(db_path=tmp_path / "t.db")                      # carga las traducciones (español)
+    assert format_points(12345) == "12.345" and format_points(999) == "999"
+    assert format_points(1234567) == "1.234.567"

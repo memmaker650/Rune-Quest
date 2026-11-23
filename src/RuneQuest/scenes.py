@@ -528,7 +528,7 @@ class GameScene(Scene):
             self._burst(*self._cell_center(*d["cell"]), new, count=12, speed=160)
         if d["points"]:
             cx, cy = self._cell_center(*d["cell"])
-            self.floaters.append([f"+{d['points']}", cx, cy, 0.9])
+            self.floaters.append([f"+{format_points(d['points'])}", cx, cy, 0.9])
         self._apply_moves(d["moves"], cleared=set(d["cells"]))
         self._queue_banner([(t("surprise.title"), self.bonus_font, S.SURPRISE_ORB),
                             (t(f"surprise.{effect}"), self.hud, S.ACCENT)], 1.5)
@@ -557,7 +557,7 @@ class GameScene(Scene):
                     self._burst(*self._cell_center(r, c), color)
                 mx = sum(self._cell_center(r, c)[0] for r, c in d["cells"]) / len(d["cells"])
                 my = sum(self._cell_center(r, c)[1] for r, c in d["cells"]) / len(d["cells"])
-                self.floaters.append([f"+{d['points']}", mx, my, 0.9])
+                self.floaters.append([f"+{format_points(d['points'])}", mx, my, 0.9])
                 self._apply_moves(d["moves"], cleared=set(d["cells"]))
             elif ev.kind == "surprise_spawn":
                 self._burst(*self._cell_center(*d["cell"]), S.SURPRISE_ORB, count=14)
@@ -793,7 +793,7 @@ class GameScene(Scene):
 
     def _draw_hud(self, surf, hover_info):
         g = self.game
-        points = draw_text(surf, self.hud, t("game.points", score=g.score), S.WHITE,
+        points = draw_text(surf, self.hud, t("game.points", score=format_points(g.score)), S.WHITE,
                            topleft=(12, 12))
         if self.is_new_record():
             draw_star(surf, (points.right + 14, points.centery), 10, S.GOLD, S.GOLD_OUTLINE)
@@ -802,16 +802,16 @@ class GameScene(Scene):
         draw_text(surf, self.hud, t("game.level", level=g.level), S.WHITE,
                   topright=(badge.left - 10, 12))
         # 2ª línea: récord y siguiente nivel
-        draw_text(surf, self.small, t("game.record", score=self.best), S.BUTTON_EDGE,
+        draw_text(surf, self.small, t("game.record", score=format_points(self.best)), S.BUTTON_EDGE,
                   topleft=(12, 44))
-        draw_text(surf, self.small, t("game.next_level", score=g.next_level_at), S.BUTTON_EDGE,
+        draw_text(surf, self.small, t("game.next_level", score=format_points(g.next_level_at)), S.BUTTON_EDGE,
                   topright=(S.LOGICAL_W - 12, 44))
         # 3ª línea: mejor cadena, grupo bajo el ratón (escritorio) e iconos de sonido
         draw_text(surf, self.small, t("game.best_chain", count=g.best_chain), S.WHITE,
                   topleft=(12, 70))
         if hover_info:
             n, pts = hover_info
-            draw_text(surf, self.small, t("game.hover", count=n, points=pts), S.ACCENT,
+            draw_text(surf, self.small, t("game.hover", count=n, points=format_points(pts)), S.ACCENT,
                       topright=(self.fx_button.rect.left - 10, 70))
         self.fx_button.draw(surf)
         self.music_button.draw(surf)

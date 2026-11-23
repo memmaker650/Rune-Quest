@@ -68,14 +68,16 @@ class DailyFileHandler(logging.FileHandler):
 
     def emit(self, record):
         day = date.fromtimestamp(record.created)
-        if day != self.day:
+        new_day = day != self.day
+        if new_day:
             self.day = day
             if self.stream:
                 self.stream.close()
                 self.stream = None  # FileHandler.emit lo vuelve a abrir con el nombre nuevo
             self.baseFilename = os.path.abspath(log_file_for(self.log_dir, day))
-            remove_old_logs(self.log_dir, self.keep_files)
         super().emit(record)
+        if new_day:  # después de crear el fichero nuevo: así quedan justo `keep_files`
+            remove_old_logs(self.log_dir, self.keep_files)
 
 
 def setup_logging(level=None, log_dir=None) -> logging.Logger:
@@ -94,8 +96,8 @@ def setup_logging(level=None, log_dir=None) -> logging.Logger:
     log_dir = Path(log_dir) if log_dir else default_log_dir()
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
-        removed = remove_old_logs(log_dir)
-        file_handler = DailyFileHandler(log_dir)
+        file_handler = DailyFileHandler(log_dir)    # crea el fichero de hoy...
+        removed = remove_old_logs(log_dir)           # ...y luego deja los 10 últimos (con él)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except OSError:
