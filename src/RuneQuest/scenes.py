@@ -417,6 +417,9 @@ class GameScene(Scene):
         # Récord del modo de juego previo a esta partida: no cambia mientras se juega (al
         # superarlo sale una estrella).
         self.best = app.db.best_score(self.game.mode)
+        # Las TOP_SCORES mejores del modo al empezar: en el marcador, un trofeo con el puesto
+        # que tendría la puntuación actual en cuanto entra en ese TOP.
+        self.top_before = [r["score"] for r in app.db.top_scores(S.TOP_SCORES, mode=self.game.mode)]
         self.hud = pygame.font.Font(None, 28)
         self.small = pygame.font.Font(None, 22)
         self.big = pygame.font.Font(None, 56)
@@ -791,12 +794,28 @@ class GameScene(Scene):
         """La puntuación de esta partida supera el récord que había al empezarla."""
         return self.game.score > self.best
 
+    def live_rank(self) -> int:
+        """Puesto que tendría ahora la puntuación entre las TOP_SCORES mejores del modo (0 si
+        aún no entra). Hay que superar la puntuación: con empate gana la más antigua."""
+        score = self.game.score
+        if score <= 0:
+            return 0
+        rank = 1 + sum(1 for s in self.top_before if s >= score)
+        return rank if rank <= S.TOP_SCORES else 0
+
     def _draw_hud(self, surf, hover_info):
         g = self.game
         points = draw_text(surf, self.hud, t("game.points", score=format_points(g.score)), S.WHITE,
                            topleft=(12, 12))
+        right = points.right
+        rank = self.live_rank()
+        if rank:                                    # trofeo + puesto en el TOP 15
+            draw_trophy(surf, (right + 16, points.centery), 18)
+            text = draw_text_outlined(surf, self.hud, str(rank), S.GOLD, S.GOLD_OUTLINE,
+                                      topleft=(right + 28, points.top))
+            right = text.right
         if self.is_new_record():
-            draw_star(surf, (points.right + 14, points.centery), 10, S.GOLD, S.GOLD_OUTLINE)
+            draw_star(surf, (right + 14, points.centery), 10, S.GOLD, S.GOLD_OUTLINE)
         badge = draw_text(surf, self.hud, t(f"mode_short.{g.mode}"), S.MODE_BADGE,
                           topright=(S.LOGICAL_W - 12, 12))          # C, R o S: modo de juego
         draw_text(surf, self.hud, t("game.level", level=g.level), S.WHITE,

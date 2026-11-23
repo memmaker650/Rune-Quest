@@ -296,3 +296,18 @@ def test_hud_numbers_use_thousands_separator(tmp_path):
     App(db_path=tmp_path / "t.db")                      # carga las traducciones (español)
     assert format_points(12345) == "12.345" and format_points(999) == "999"
     assert format_points(1234567) == "1.234.567"
+
+
+def test_hud_live_rank_in_top15(tmp_path):
+    from RuneQuest import settings as S
+    from RuneQuest.scenes import GameScene
+    app = App(db_path=tmp_path / "t.db")
+    for score in range(1000, 16001, 1000):              # 16 puntuaciones: 1000 … 16000
+        app.db.add_score("Ana", score, 1, mode="classic")
+    scene = GameScene(app, mode="classic")
+    assert len(scene.top_before) == S.TOP_SCORES and scene.top_before[-1] == 2000
+    for score, rank in ((0, 0), (1500, 0), (2000, 0), (2001, 15), (8500, 9),
+                        (16000, 2), (16001, 1)):
+        scene.game.score = score
+        assert scene.live_rank() == rank, score
+    scene.draw(app.display.surface)                     # dibuja el trofeo sin errores
